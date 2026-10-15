@@ -39,7 +39,7 @@ struct EntryRepository {
 
         context.insert(entry)
         do {
-            try context.save()
+            try commitChanges(context)
         } catch {
             context.delete(entry)
             if let committedFile {

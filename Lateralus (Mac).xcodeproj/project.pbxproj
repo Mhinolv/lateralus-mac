@@ -29,9 +29,22 @@
 		9EB265153009EB750044E434 /* Lateralus (Mac)UITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Lateralus (Mac)UITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		9EB2652A3009EB750044E434 /* Exceptions for "Lateralus (Mac)" folder in "Lateralus (Mac)" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 9EB264F83009EB740044E434 /* Lateralus (Mac) */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		9EB264FB3009EB740044E434 /* Lateralus (Mac) */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				9EB2652A3009EB750044E434 /* Exceptions for "Lateralus (Mac)" folder in "Lateralus (Mac)" target */,
+			);
 			path = "Lateralus (Mac)";
 			sourceTree = "<group>";
 		};
@@ -402,8 +415,9 @@
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
-				ENABLE_USER_SELECTED_FILES = readonly;
+				ENABLE_USER_SELECTED_FILES = readwrite;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Lateralus (Mac)/Info.plist";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Lateralus records voice notes you attach to journal entries. Audio never leaves this Mac.";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -436,8 +450,9 @@
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
-				ENABLE_USER_SELECTED_FILES = readonly;
+				ENABLE_USER_SELECTED_FILES = readwrite;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Lateralus (Mac)/Info.plist";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Lateralus records voice notes you attach to journal entries. Audio never leaves this Mac.";
 				LD_RUNPATH_SEARCH_PATHS = (

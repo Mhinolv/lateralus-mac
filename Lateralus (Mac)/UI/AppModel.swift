@@ -33,6 +33,11 @@ final class AppModel {
     /// search field exists to focus.
     var pendingSearchFocus = false
 
+    /// The default main-actor isolation makes the deinit hop to the main
+    /// executor. On macOS 15 that hop aborts the process (#17), and the
+    /// deinit touches no state, so keep it nonisolated.
+    nonisolated deinit {}
+
     func toggleSidebar() {
         isSidebarVisible.toggle()
         UserDefaults.standard.set(isSidebarVisible, forKey: "sidebarVisible")

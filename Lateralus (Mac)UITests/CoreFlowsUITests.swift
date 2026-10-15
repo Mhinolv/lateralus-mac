@@ -64,8 +64,8 @@ final class CoreFlowsUITests: XCTestCase {
                 NSPredicate(format: "label ==[c] %@ OR value ==[c] %@", text, text)
             ).firstMatch
         }
-        XCTAssertTrue(insightsText("Streak").waitForExistence(timeout: 5))
-        XCTAssertTrue(insightsText("Entries total").exists)
+        XCTAssertTrue(insightsText("Your practice patterns").waitForExistence(timeout: 5))
+        XCTAssertTrue(insightsText("Last 7 days").exists)
         XCTAssertTrue(insightsText("Discipline balance").exists)
 
         // --- Practice with unsaved-work guard ---

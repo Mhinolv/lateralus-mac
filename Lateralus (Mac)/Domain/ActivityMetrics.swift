@@ -60,4 +60,34 @@ struct ActivityMetrics {
             return (day: day, count: histogram[day] ?? 0)
         }
     }
+
+    /// Practice disciplines with at least one entry.
+    var disciplinesTried: Int {
+        Exercise.practice.count { disciplineCounts[$0, default: 0] > 0 }
+    }
+
+    /// The most-practiced discipline, or nil before any practice entry. A
+    /// tie goes to the first in catalog order, so the mark does not move
+    /// from one redraw to the next.
+    var leadingDiscipline: Exercise? {
+        var leader: Exercise?
+        var best = 0
+        for exercise in Exercise.practice {
+            let count = disciplineCounts[exercise, default: 0]
+            if count > best {
+                leader = exercise
+                best = count
+            }
+        }
+        return leader
+    }
+
+    /// Filled dots in a balance row of `slots` dots: the count scaled to
+    /// the leader's count and rounded, with at least one dot for any
+    /// count above zero.
+    static func balanceDots(count: Int, max leaderCount: Int, slots: Int = 6) -> Int {
+        guard count > 0, leaderCount > 0 else { return 0 }
+        let scaled = (Double(slots * count) / Double(leaderCount)).rounded()
+        return min(slots, max(1, Int(scaled)))
+    }
 }

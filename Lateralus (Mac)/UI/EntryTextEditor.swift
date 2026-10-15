@@ -34,13 +34,18 @@ struct EntryTextEditor: View {
 
     @FocusState private var focused: Bool
 
+    /// The response type, shared with the reading pane so an edit does not
+    /// reflow the text.
+    static let responseFont = Theme.display(18, weight: .regular)
+    static let responseLineSpacing: CGFloat = 8
+
     var body: some View {
         VStack(alignment: .trailing, spacing: 12) {
             TextEditor(text: $edit.text)
                 .focused($focused)
                 .scrollContentBackground(.hidden)
-                .font(Theme.ui(16))
-                .lineSpacing(6)
+                .font(Self.responseFont)
+                .lineSpacing(Self.responseLineSpacing)
                 .foregroundStyle(Theme.ink)
                 .padding(8)
                 .frame(minHeight: 160)

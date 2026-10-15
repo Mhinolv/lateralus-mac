@@ -80,7 +80,8 @@ struct SideBar: View {
             appModel.select(.practice(exercise))
         } label: {
             HStack(spacing: 12) {
-                DisciplineMonogram(letters: exercise.monogram, selected: selected)
+                DisciplineDot(color: selected ? Theme.accent : Theme.inkTertiary)
+                    .frame(width: 16, height: 16)
                 Text(exercise.title)
                     .font(Theme.ui(13.5, .regular))
                     .foregroundStyle(selected ? Theme.accentStrong : Theme.inkSecondary)

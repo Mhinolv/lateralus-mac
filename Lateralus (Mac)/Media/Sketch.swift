@@ -10,7 +10,16 @@ struct Sketch: Codable, Equatable {
         var blue: Double
         var width: Double
 
-        var color: Color { Color(red: red, green: green, blue: blue) }
+        /// The on-screen color. A stroke of the near-black ink pen follows
+        /// the pen into dark mode, so it stays visible on dark paper. The
+        /// saved components never change.
+        var color: Color {
+            let ink = SketchPen.ink.components
+            if red == ink.red, green == ink.green, blue == ink.blue {
+                return SketchPen.ink.color
+            }
+            return Color(red: red, green: green, blue: blue)
+        }
     }
 
     struct Point: Codable, Equatable {
@@ -34,7 +43,8 @@ struct Sketch: Codable, Equatable {
 }
 
 /// The pens available in the canvas. Ink colors are chosen to read well on
-/// the light paper surface.
+/// the light paper surface. The ink pen draws in light ink on dark-mode
+/// paper.
 enum SketchPen: CaseIterable, Identifiable {
     case ink, crimson, cobalt, forest, marigold, plum
 
@@ -42,7 +52,7 @@ enum SketchPen: CaseIterable, Identifiable {
 
     var color: Color {
         switch self {
-        case .ink: Color(red: 0.13, green: 0.12, blue: 0.11)
+        case .ink: Theme.adaptive(0x211F1C, 0xF2EFE7)
         case .crimson: Color(red: 0.78, green: 0.18, blue: 0.21)
         case .cobalt: Color(red: 0.16, green: 0.32, blue: 0.75)
         case .forest: Color(red: 0.13, green: 0.50, blue: 0.30)
@@ -63,7 +73,7 @@ enum SketchPen: CaseIterable, Identifiable {
     }
 }
 
-/// An editable drawing surface: light paper, pen palette, three nib sizes,
+/// An editable drawing surface: `Theme.sketchPaper`, pen palette, three nib sizes,
 /// a stroke eraser, undo, redo, and clear. Pointer-driven — mouse or
 /// trackpad. ⌘Z and ⇧⌘Z apply only while the canvas has focus.
 struct SketchCanvas: View {
@@ -189,7 +199,7 @@ struct SketchCanvas: View {
                 )
             }
         }
-        .background(SketchRendering.paper)
+        .background(Theme.sketchPaper)
         .clipShape(.rect(cornerRadius: Theme.radiusSmall))
         .overlay(
             RoundedRectangle(cornerRadius: Theme.radiusSmall)
@@ -271,7 +281,7 @@ struct SketchImage: View {
                     )
                 }
             }
-            .background(SketchRendering.paper)
+            .background(Theme.sketchPaper)
             .clipShape(.rect(cornerRadius: Theme.radiusSmall))
             .overlay(
                 RoundedRectangle(cornerRadius: Theme.radiusSmall)
@@ -284,13 +294,9 @@ struct SketchImage: View {
 }
 
 enum SketchRendering {
-    /// The paper surface both the editor and viewer draw on — warmer and
-    /// lighter than the app's own surfaces, so it still reads as a
-    /// distinct drawing sheet rather than blending into the chrome.
-    /// Kept a shade above `Theme.background` for exactly that reason.
-    static let paper = Color(red: paperRGB.red, green: paperRGB.green, blue: paperRGB.blue)
-
-    /// The sRGB components of `paper`, for drawing outside SwiftUI.
+    /// The sRGB paper of an exported PNG. An export is always light, so
+    /// saved colors keep their contrast whatever the app appearance is.
+    /// On screen, the editor and viewer draw on `Theme.sketchPaper`.
     static let paperRGB = (red: 0.992, green: 0.976, blue: 0.945)
 
     /// Midpoint-smoothed path through a stroke's sampled points.

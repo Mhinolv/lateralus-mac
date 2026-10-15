@@ -19,7 +19,6 @@ struct LateralusApp: App {
                     RecoveryView(details: persistence.errorMessage, retry: persistence.load)
                 }
             }
-            .preferredColorScheme(.light)
         }
         .defaultSize(width: 1120, height: 720)
         .windowResizability(.contentMinSize)

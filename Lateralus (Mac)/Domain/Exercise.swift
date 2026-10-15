@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 /// The catalog of thinking disciplines. Raw values are stored in the
@@ -221,12 +222,19 @@ enum Exercise: String, CaseIterable, Codable, Identifiable, Hashable {
     /// Discipline accent. The system spends its color on one hue only —
     /// every discipline shares the app's single accent rather than carrying
     /// a unique identity color. (Kept as a literal here, not a reference to
-    /// UI/Theme.swift, so Domain stays UI-independent; keep this in sync
-    /// with `Theme.accent` if the accent ever changes.)
+    /// UI/Theme.swift, so Domain stays UI-independent; keep this light/dark
+    /// pair in sync with `Theme.accent` if the accent ever changes.)
     /// Screens that need to single out one discipline among many (e.g.
     /// Insights' balance chart) contrast accent against faint ink instead
     /// of relying on a per-item hue.
-    var tint: Color { Color(red: 0.710, green: 0.314, blue: 0.180) }
+    var tint: Color { Self.accentTint }
+
+    /// `#4A6300` in light mode, `#D4F25A` in dark mode.
+    private static let accentTint = Color(nsColor: NSColor(name: nil) { appearance in
+        appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+            ? NSColor(srgbRed: 212 / 255, green: 242 / 255, blue: 90 / 255, alpha: 1)
+            : NSColor(srgbRed: 74 / 255, green: 99 / 255, blue: 0, alpha: 1)
+    })
 
     /// Two-letter mark shown in the sidebar. Twelve SF Symbols at sidebar
     /// size all resolve to "small grey shape"; initials stay legible and

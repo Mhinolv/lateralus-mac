@@ -1,7 +1,8 @@
 import SwiftUI
 
 /// The app's own inline sidebar — themed chrome, not a system split view.
-/// Wordmark, main navigation, the full practice catalog, and diary access.
+/// Wordmark, main navigation, and the full practice catalog. New Diary Entry
+/// lives in the window toolbar.
 struct SideBar: View {
     @Environment(AppModel.self) private var appModel
 
@@ -11,8 +12,7 @@ struct SideBar: View {
                 .font(Theme.display(22, italic: true))
                 .kerning(0.2)
                 .foregroundStyle(Theme.ink)
-                // Clear the traffic lights overlaying the hidden title bar.
-                .padding(.top, 40)
+                .padding(.top, 16)
                 .padding(.leading, 12)
                 .padding(.bottom, 26)
 
@@ -35,36 +35,12 @@ struct SideBar: View {
                 }
             }
 
-            Spacer(minLength: 8)
-
-            Rectangle().fill(Theme.dividerSoft).frame(height: 1).padding(.top, 8)
-
-            Button {
-                appModel.showDiaryComposer = true
-            } label: {
-                Text("New Diary Entry")
-                    .font(Theme.ui(14, .semibold))
-                    .foregroundStyle(Theme.primaryLabel)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background(Theme.primaryFill, in: .rect(cornerRadius: Theme.radiusMedium))
-                    .contentShape(.rect)
-                    .hoverHighlight(cornerRadius: Theme.radiusMedium)
-            }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("sidebar-diary")
-            .help("New diary entry (⌘N)")
-            .padding(.top, 14)
-            .padding(.bottom, 6)
         }
         .padding(.horizontal, 12)
         .padding(.bottom, 10)
         .frame(width: 264)
         .frame(maxHeight: .infinity, alignment: .top)
-        .background {
-            Theme.sidebar
-                .gesture(WindowDragGesture())
-        }
+        .background(Theme.sidebar)
         .overlay(alignment: .trailing) {
             Rectangle().fill(Theme.divider).frame(width: 1)
         }

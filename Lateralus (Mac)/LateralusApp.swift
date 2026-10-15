@@ -6,6 +6,8 @@ struct LateralusApp: App {
     @State private var persistence = PersistenceController(
         inMemory: ProcessInfo.processInfo.arguments.contains("--ui-test-in-memory")
     )
+    @State private var quickDiary = QuickDiaryModel()
+    @AppStorage(SettingsKey.showMenuBarComposer) private var showMenuBarComposer = false
 
     var body: some Scene {
         WindowGroup(id: "main") {
@@ -24,6 +26,16 @@ struct LateralusApp: App {
         .commands {
             LateralusCommands()
         }
+
+        Settings {
+            SettingsView()
+        }
+
+        // Off by default. Settings shows it (owner decision on #11).
+        MenuBarExtra("Lateralus", systemImage: "square.and.pencil", isInserted: $showMenuBarComposer) {
+            QuickDiaryView(model: quickDiary, container: persistence.container)
+        }
+        .menuBarExtraStyle(.window)
     }
 }
 

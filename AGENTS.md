@@ -39,11 +39,11 @@ Lateralus (Mac) is a native macOS app for practice in lateral thinking. It gives
 ## Build and test
 
 ```sh
-xcodebuild -project "Lateralus (Mac).xcodeproj" -scheme "Lateralus (Mac)" -configuration Debug -destination platform=macOS -derivedDataPath build/DerivedData CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= build
-xcodebuild -project "Lateralus (Mac).xcodeproj" -scheme "Lateralus (Mac)" -configuration Debug -destination platform=macOS -derivedDataPath build/DerivedData CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= -only-testing "Lateralus (Mac)Tests" test
+xcodebuild -project "Lateralus (Mac).xcodeproj" -scheme "Lateralus (Mac)" -configuration Debug -destination platform=macOS -derivedDataPath build/DerivedData CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= LATERALUS_ID_SUFFIX=.team build
+xcodebuild -project "Lateralus (Mac).xcodeproj" -scheme "Lateralus (Mac)" -configuration Debug -destination platform=macOS -derivedDataPath build/DerivedData CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= LATERALUS_ID_SUFFIX=.team -only-testing "Lateralus (Mac)Tests" test
 ```
 
-Agents use ad-hoc signing because they have no keychain access. CI runs the same unit-test command on `macos-26` with Xcode 26.2.
+Agents use ad-hoc signing because they have no keychain access. `LATERALUS_ID_SUFFIX=.team` gives team builds their own bundle ID, so tests never open the owner's real journal container. CI runs the same unit-test command on `macos-26` with Xcode 26.2.
 
 ## Team Roadmap Workflow (multi-agent, GitHub)
 

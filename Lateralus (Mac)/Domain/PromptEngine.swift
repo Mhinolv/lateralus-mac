@@ -117,7 +117,8 @@ enum PromptEngine {
             return Prompt(
                 exercise: exercise,
                 headline: "Fuse \(first) with \(second).",
-                detail: "One invention, both parents visible."
+                detail: "One invention, both parents visible.",
+                markedPhrase: second
             )
         case .backstory:
             return Prompt(exercise: exercise, headline: ContentPools.backstoryScenes[index], detail: nil)
@@ -127,7 +128,8 @@ enum PromptEngine {
             return Prompt(
                 exercise: exercise,
                 headline: "Describe \(scene).",
-                detail: "You are \(vantage)."
+                detail: "You are \(vantage).",
+                markedPhrase: scene
             )
         case .redefine:
             return Prompt(
@@ -139,7 +141,8 @@ enum PromptEngine {
             return Prompt(
                 exercise: exercise,
                 headline: "Invent a word for: \(ContentPools.unnamedExperiences[index]).",
-                detail: nil
+                detail: nil,
+                markedPhrase: ContentPools.unnamedExperiences[index]
             )
         case .commonThread:
             let pair = commonThreadPairs[index]
@@ -152,7 +155,8 @@ enum PromptEngine {
             return Prompt(
                 exercise: exercise,
                 headline: "Find the honest upside: \(ContentPools.hardships[index]).",
-                detail: nil
+                detail: nil,
+                markedPhrase: ContentPools.hardships[index]
             )
         case .inventions:
             let need = ContentPools.inventionNeeds[index / ContentPools.inventionCatches.count]
@@ -160,7 +164,8 @@ enum PromptEngine {
             return Prompt(
                 exercise: exercise,
                 headline: "Design something for \(need).",
-                detail: catchRule.prefix(1).capitalized + String(catchRule.dropFirst()) + "."
+                detail: catchRule.prefix(1).capitalized + String(catchRule.dropFirst()) + ".",
+                markedPhrase: need
             )
         case .miniMythology:
             return Prompt(

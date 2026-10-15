@@ -31,6 +31,16 @@ final class AppModel {
     /// session view is on screen.
     var sessionHasUnsavedWork = false
 
+    /// Set by the toolbar New Prompt button; consumed by the practice
+    /// session, which owns the unsaved-work guard.
+    var pendingNewPrompt = false
+
+    /// True on a practice screen, where New Prompt can deal another prompt.
+    var canDealNewPrompt: Bool {
+        if case .practice = selection { return true }
+        return false
+    }
+
     private(set) var selection: SidebarItem = .today
     var pendingSelection: SidebarItem?
     var showDiscardNavigationDialog = false

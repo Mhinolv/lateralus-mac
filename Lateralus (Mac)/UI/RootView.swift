@@ -184,6 +184,20 @@ struct RootView: View {
             .help("Show or hide the sidebar (⌃⌘S)")
             .accessibilityIdentifier("toolbar-sidebar")
         }
+        if appModel.canDealNewPrompt {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    appModel.pendingNewPrompt = true
+                } label: {
+                    Label("New Prompt", systemImage: "arrow.triangle.2.circlepath")
+                        .labelStyle(.iconOnly)
+                }
+                .keyboardShortcut("r", modifiers: .command)
+                .help("Deal another prompt (⌘R)")
+                .accessibilityIdentifier("session-new-prompt")
+                .disabled(appModel.restoreStatus.isBusy)
+            }
+        }
         ToolbarItem(placement: .primaryAction) {
             Button {
                 appModel.showDiaryComposer = true

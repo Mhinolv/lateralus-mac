@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 /// A vector sketch: an ordered list of strokes. Encoded as JSON into the
@@ -10,15 +11,12 @@ struct Sketch: Codable, Equatable {
         var blue: Double
         var width: Double
 
-        /// The on-screen color. A stroke of the near-black ink pen follows
-        /// the pen into dark mode, so it stays visible on dark paper. The
-        /// saved components never change.
+        /// The on-screen color. A stroke of one of the pens follows the pen
+        /// into dark mode, so it stays readable on dark paper. Other colors
+        /// draw as saved. The saved components never change.
         var color: Color {
-            let ink = SketchPen.ink.components
-            if red == ink.red, green == ink.green, blue == ink.blue {
-                return SketchPen.ink.color
-            }
-            return Color(red: red, green: green, blue: blue)
+            SketchPen(red: red, green: green, blue: blue)?.color
+                ?? Color(red: red, green: green, blue: blue)
         }
     }
 
@@ -42,22 +40,47 @@ struct Sketch: Codable, Equatable {
     }
 }
 
-/// The pens available in the canvas. Ink colors are chosen to read well on
-/// the light paper surface. The ink pen draws in light ink on dark-mode
-/// paper.
+/// The pens available in the canvas. The saved `components` are chosen to
+/// read well on light paper. On dark-mode paper each pen draws in a lifted
+/// color, `darkHex`. Strokes and PNG exports keep the light components.
 enum SketchPen: CaseIterable, Identifiable {
     case ink, crimson, cobalt, forest, marigold, plum
 
     var id: Self { self }
 
+    /// The pen that saves exactly these components, if there is one.
+    init?(red: Double, green: Double, blue: Double) {
+        guard let pen = Self.allCases.first(where: {
+            $0.components == (red, green, blue)
+        }) else { return nil }
+        self = pen
+    }
+
+    /// The saved components in light mode, `darkHex` in dark mode.
     var color: Color {
+        let rgb = components
+        let dark = darkHex
+        return Color(nsColor: NSColor(name: nil) { appearance in
+            Theme.isDark(appearance)
+                ? NSColor(
+                    srgbRed: CGFloat((dark >> 16) & 0xFF) / 255,
+                    green: CGFloat((dark >> 8) & 0xFF) / 255,
+                    blue: CGFloat(dark & 0xFF) / 255,
+                    alpha: 1
+                )
+                : NSColor(srgbRed: rgb.red, green: rgb.green, blue: rgb.blue, alpha: 1)
+        })
+    }
+
+    /// The sRGB color the pen draws in on dark-mode paper.
+    var darkHex: UInt32 {
         switch self {
-        case .ink: Theme.adaptive(0x211F1C, 0xF2EFE7)
-        case .crimson: Color(red: 0.78, green: 0.18, blue: 0.21)
-        case .cobalt: Color(red: 0.16, green: 0.32, blue: 0.75)
-        case .forest: Color(red: 0.13, green: 0.50, blue: 0.30)
-        case .marigold: Color(red: 0.89, green: 0.58, blue: 0.10)
-        case .plum: Color(red: 0.52, green: 0.25, blue: 0.63)
+        case .ink: 0xF2EFE7
+        case .crimson: 0xE5484D
+        case .cobalt: 0x4C7BF0
+        case .forest: 0x3BAF6A
+        case .marigold: 0xF2B33D
+        case .plum: 0xA86ADB
         }
     }
 
@@ -80,6 +103,9 @@ struct SketchCanvas: View {
     @Binding var sketch: Sketch
     @Binding var history: SketchHistory
     let tint: Color
+    /// If true, the canvas fills its container and the tools float over its
+    /// top-left corner in a capsule. If false, the tools sit above it.
+    var floatingTools = false
 
     @State private var pen: SketchPen = .ink
     @State private var nib: Double = 3
@@ -91,10 +117,29 @@ struct SketchCanvas: View {
 
     private let nibSizes: [Double] = [1.5, 3, 7]
 
+    /// A floating-tools canvas is a pane, so it takes the pane corner.
+    private var cornerRadius: CGFloat {
+        floatingTools ? Theme.radiusMedium : Theme.radiusSmall
+    }
+
     var body: some View {
-        VStack(spacing: 10) {
-            toolbar
+        if floatingTools {
             canvas
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .overlay(alignment: .topLeading) {
+                    toolbar
+                        .labelStyle(.iconOnly)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(Theme.surface, in: .capsule)
+                        .overlay(Capsule().strokeBorder(Theme.divider, lineWidth: 1))
+                        .padding(12)
+                }
+        } else {
+            VStack(spacing: 10) {
+                toolbar
+                canvas
+            }
         }
     }
 
@@ -151,7 +196,11 @@ struct SketchCanvas: View {
             .accessibilityLabel("Eraser")
             .help("Eraser — click or drag across a stroke to remove it")
 
-            Spacer()
+            if floatingTools {
+                Divider().frame(height: 18)
+            } else {
+                Spacer()
+            }
 
             Button {
                 history.undo(&sketch)
@@ -200,9 +249,9 @@ struct SketchCanvas: View {
             }
         }
         .background(Theme.sketchPaper)
-        .clipShape(.rect(cornerRadius: Theme.radiusSmall))
+        .clipShape(.rect(cornerRadius: cornerRadius))
         .overlay(
-            RoundedRectangle(cornerRadius: Theme.radiusSmall)
+            RoundedRectangle(cornerRadius: cornerRadius)
                 .strokeBorder(
                     canvasFocused ? Theme.accent : Theme.divider,
                     lineWidth: canvasFocused ? 1.5 : 1

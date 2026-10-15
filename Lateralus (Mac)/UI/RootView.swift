@@ -6,6 +6,7 @@ struct RootView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var appModel = AppModel()
     @State private var appNow = Date.now
+    @Query private var entries: [JournalEntry]
 
     var body: some View {
         ZStack {
@@ -66,6 +67,46 @@ struct RootView: View {
         } message: {
             Text("You have unsaved work in this session. Leaving now will throw it away.")
         }
+        .onChange(of: entries.count, initial: true) { _, count in
+            appModel.journalEntryCount = count
+        }
+        .onChange(of: appModel.pendingArchiveExport) { _, pending in
+            guard pending else { return }
+            appModel.pendingArchiveExport = false
+            // Leave the menu action before the panel runs its modal loop.
+            Task { await exportArchive() }
+        }
+        .alert(
+            Text(appModel.archiveExportResult?.title ?? ""),
+            isPresented: Binding(
+                get: { appModel.archiveExportResult != nil },
+                set: { if !$0 { appModel.archiveExportResult = nil } }
+            ),
+            presenting: appModel.archiveExportResult
+        ) { result in
+            if case .success(let url, _) = result {
+                Button("Show in Finder") {
+                    NSWorkspace.shared.activateFileViewerSelecting([url])
+                }
+            }
+            Button("OK") {}
+                .keyboardShortcut(.defaultAction)
+        } message: { result in
+            Text(result.message)
+        }
+    }
+
+    private func exportArchive() async {
+        guard appModel.canExportArchive else { return }
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.canCreateDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.prompt = "Export"
+        panel.message = "Choose a folder for the journal archive."
+        guard panel.runModal() == .OK, let folder = panel.url else { return }
+        await appModel.exportArchive(entries, into: folder)
     }
 
     @ViewBuilder

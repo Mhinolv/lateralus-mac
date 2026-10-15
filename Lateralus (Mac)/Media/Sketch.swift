@@ -288,7 +288,10 @@ enum SketchRendering {
     /// lighter than the app's own surfaces, so it still reads as a
     /// distinct drawing sheet rather than blending into the chrome.
     /// Kept a shade above `Theme.background` for exactly that reason.
-    static let paper = Color(red: 0.992, green: 0.976, blue: 0.945)
+    static let paper = Color(red: paperRGB.red, green: paperRGB.green, blue: paperRGB.blue)
+
+    /// The sRGB components of `paper`, for drawing outside SwiftUI.
+    static let paperRGB = (red: 0.992, green: 0.976, blue: 0.945)
 
     /// Midpoint-smoothed path through a stroke's sampled points.
     static func path(for stroke: Sketch.Stroke) -> Path {

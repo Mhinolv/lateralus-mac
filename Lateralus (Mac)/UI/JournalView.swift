@@ -14,6 +14,13 @@ struct JournalView: View {
     @State private var entryPendingDeletion: JournalEntry?
     @State private var persistenceErrorMessage = ""
     @State private var showPersistenceError = false
+    /// The open edit of the selected entry's response text.
+    @State private var responseEdit: ResponseEdit?
+    @State private var saveEditErrorMessage = ""
+    @State private var showSaveEditError = false
+    /// A list selection held back while the user decides about unsaved edits.
+    @State private var pendingSelectionID: UUID?
+    @State private var showUnsavedEditDialog = false
     @FocusState private var searchFocused: Bool
 
     private var filtered: [JournalEntry] {
@@ -38,6 +45,28 @@ struct JournalView: View {
         return entries.first { $0.id == selectedID }
     }
 
+    private var editHasChanges: Bool {
+        responseEdit?.hasChanges ?? false
+    }
+
+    /// List selection with the unsaved-edit guard: a change of entry asks
+    /// first if the open edit has changes.
+    private var listSelection: Binding<UUID?> {
+        Binding(
+            get: { selectedID },
+            set: { newID in
+                guard newID != selectedID else { return }
+                if editHasChanges {
+                    pendingSelectionID = newID
+                    showUnsavedEditDialog = true
+                } else {
+                    responseEdit = nil
+                    selectedID = newID
+                }
+            }
+        )
+    }
+
     var body: some View {
         HSplitView {
             listPane
@@ -47,6 +76,39 @@ struct JournalView: View {
         }
         .onAppear { consumeSearchFocusRequest() }
         .onChange(of: appModel.pendingSearchFocus) { consumeSearchFocusRequest() }
+        .onChange(of: editHasChanges) { _, dirty in
+            appModel.sessionHasUnsavedWork = dirty
+        }
+        .onChange(of: selectedEntry == nil) { _, missing in
+            // The entry can vanish under an open edit, e.g. a delete in another window.
+            if missing { responseEdit = nil }
+        }
+        .onDisappear {
+            if editHasChanges { appModel.sessionHasUnsavedWork = false }
+        }
+        .alert("Couldn’t Save", isPresented: $showSaveEditError) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(saveEditErrorMessage)
+        }
+        .confirmationDialog(
+            "Save changes to this response?",
+            isPresented: $showUnsavedEditDialog,
+            titleVisibility: .visible
+        ) {
+            if responseEdit?.canSave ?? false {
+                Button("Save") {
+                    if saveEdit() { applyPendingSelection() }
+                }
+            }
+            Button("Discard Changes", role: .destructive) {
+                responseEdit = nil
+                applyPendingSelection()
+            }
+            Button("Cancel", role: .cancel) { pendingSelectionID = nil }
+        } message: {
+            Text("You edited this response but did not save it.")
+        }
         .alert("Journal Update Failed", isPresented: $showPersistenceError) {
             Button("OK", role: .cancel) {}
         } message: {
@@ -129,7 +191,7 @@ struct JournalView: View {
     /// material with it, and that material is the one surface in the app
     /// that can't be repainted paper.
     private var entryList: some View {
-        List(selection: $selectedID) {
+        List(selection: listSelection) {
                 ForEach(grouped, id: \.day) { group in
                     Text(group.day, format: .dateTime.weekday(.wide).month(.abbreviated).day())
                         .font(Theme.ui(11, .semibold))
@@ -186,6 +248,8 @@ struct JournalView: View {
         if let entry = selectedEntry {
             EntryDetailView(
                 entry: entry,
+                edit: $responseEdit,
+                onSaveEdit: { saveEdit() },
                 onDelete: { entryPendingDeletion = entry }
             )
         } else {
@@ -256,8 +320,32 @@ struct JournalView: View {
         if !entries.isEmpty { searchFocused = true }
     }
 
+    /// Writes the open edit through the repository. A failure keeps the
+    /// typed text in edit mode.
+    @discardableResult
+    private func saveEdit() -> Bool {
+        guard let edit = responseEdit, edit.canSave, let entry = selectedEntry else { return false }
+        do {
+            try EntryRepository(context: modelContext).updateResponseText(of: entry, to: edit.trimmed)
+            responseEdit = nil
+            return true
+        } catch {
+            saveEditErrorMessage = error.localizedDescription
+            showSaveEditError = true
+            return false
+        }
+    }
+
+    private func applyPendingSelection() {
+        selectedID = pendingSelectionID
+        pendingSelectionID = nil
+    }
+
     private func delete(_ entry: JournalEntry) {
-        if selectedID == entry.id { selectedID = nil }
+        if selectedID == entry.id {
+            selectedID = nil
+            responseEdit = nil
+        }
         do {
             try EntryRepository(context: modelContext).delete(entry)
         } catch {

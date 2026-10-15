@@ -176,11 +176,8 @@ struct InsightsView: View {
         return HStack(spacing: 12) {
             Group {
                 if isLeader {
-                    Text(exercise.title)
-                        .foregroundStyle(Theme.onMark)
-                        .padding(.horizontal, 3)
-                        .background(Theme.mark, in: .rect(cornerRadius: 3))
-                        .padding(.horizontal, -3)
+                    Text(Highlight.attributed(exercise.title, marking: exercise.title))
+                        .foregroundStyle(Theme.ink)
                 } else {
                     Text(exercise.title)
                         .foregroundStyle(Theme.inkSecondary)

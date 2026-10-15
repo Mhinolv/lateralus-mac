@@ -124,8 +124,8 @@ enum Theme {
         ])
     }
 
-    /// Display weights. `.light` is for the large Today and Insights
-    /// headlines, prompts sit at `.regular`, and titles at `.semibold`.
+    /// Display weights. `.light` is for the large Insights headlines and
+    /// the Today detail, prompts sit at `.regular`, and titles at `.semibold`.
     enum DisplayWeight: CGFloat {
         case light = 300
         case regular = 400
@@ -345,22 +345,27 @@ struct Badge: View {
     }
 }
 
-/// The streak indicator shown on Today. A filled accent wash rather than an
-/// outline: it's the one number the product wants you to notice, and the
-/// only place a soft fill appears outside of selection.
-struct StreakPill: View {
-    let days: Int
+/// The highlighter: prompt text with its dealt fragment set on a `mark`
+/// fill in `onMark` ink. The rest of the text keeps the style of the `Text`
+/// that shows it.
+enum Highlight {
+    static func attributed(_ text: String, marking phrase: String?) -> AttributedString {
+        var result = AttributedString(text)
+        guard let range = markedRange(in: text, phrase: phrase),
+              let lower = AttributedString.Index(range.lowerBound, within: result),
+              let upper = AttributedString.Index(range.upperBound, within: result)
+        else { return result }
+        result[lower..<upper].backgroundColor = Theme.mark
+        result[lower..<upper].foregroundColor = Theme.onMark
+        return result
+    }
 
-    var body: some View {
-        Text("\(days) day\(days == 1 ? "" : "s") streak")
-            .font(Theme.ui(14, .semibold))
-            .monospacedDigit()
-            .foregroundStyle(Theme.accentStrong)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
-            .background(Theme.accentSoft, in: .capsule)
-            .opacity(days > 0 ? 1 : 0.5)
-            .help("Consecutive days with at least one journal entry")
+    /// The last occurrence of `phrase` in `text`. Every template puts the
+    /// dealt fragment after its fixed lead, so the last match is the dealt
+    /// one even when the lead repeats a word of it.
+    static func markedRange(in text: String, phrase: String?) -> Range<String.Index>? {
+        guard let phrase, !phrase.isEmpty else { return nil }
+        return text.range(of: phrase, options: .backwards)
     }
 }
 
@@ -415,27 +420,36 @@ extension View {
 }
 
 /// The system's primary action: a `primaryFill` capsule with a
-/// `primaryLabel` title.
+/// `primaryLabel` title. `shortcutHint` names the key that also runs the
+/// action, in mono at reduced opacity after the title.
 struct PrimaryActionButtonLabel: View {
     let title: String
     var enabled: Bool = true
     var fullWidth: Bool = false
+    var shortcutHint: String?
 
     var body: some View {
-        Text(title)
-            .font(Theme.ui(15, .semibold))
-            // Disabled still has to be readable — it names the action you'd
-            // get, and this is the only button on the card.
-            .foregroundStyle(enabled ? Theme.primaryLabel : Theme.inkSecondary)
-            .frame(maxWidth: fullWidth ? .infinity : nil)
-            .padding(.horizontal, fullWidth ? 0 : 22)
-            .padding(.vertical, 12)
-            .background(enabled ? Theme.primaryFill : Theme.surfaceSunken, in: .capsule)
-            .overlay(
-                Capsule().strokeBorder(enabled ? .clear : Theme.divider, lineWidth: 1)
-            )
-            .contentShape(.capsule)
-            .hoverHighlight(in: Capsule())
+        HStack(spacing: 8) {
+            Text(title)
+            if let shortcutHint {
+                Text(shortcutHint)
+                    .font(Theme.mono(13, .regular))
+                    .opacity(0.65)
+            }
+        }
+        .font(Theme.ui(15, .semibold))
+        // Disabled still has to be readable — it names the action you'd
+        // get, and this is the only button on the card.
+        .foregroundStyle(enabled ? Theme.primaryLabel : Theme.inkSecondary)
+        .frame(maxWidth: fullWidth ? .infinity : nil)
+        .padding(.horizontal, fullWidth ? 0 : 22)
+        .padding(.vertical, 12)
+        .background(enabled ? Theme.primaryFill : Theme.surfaceSunken, in: .capsule)
+        .overlay(
+            Capsule().strokeBorder(enabled ? .clear : Theme.divider, lineWidth: 1)
+        )
+        .contentShape(.capsule)
+        .hoverHighlight(in: Capsule())
     }
 }
 

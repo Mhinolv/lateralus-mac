@@ -9,6 +9,16 @@ enum SidebarItem: Hashable {
     case journal
     case insights
     case practice(Exercise)
+
+    /// The window title for this destination.
+    var title: String {
+        switch self {
+        case .today: "Today"
+        case .journal: "Journal"
+        case .insights: "Insights"
+        case .practice(let exercise): exercise.title
+        }
+    }
 }
 
 /// Window-level navigation and cross-cutting UI state, shared with the

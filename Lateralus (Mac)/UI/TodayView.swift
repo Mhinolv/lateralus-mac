@@ -21,6 +21,12 @@ struct TodayView: View {
     }
 
     var body: some View {
+        content
+            .navigationTitle(activeSession?.exercise.title ?? SidebarItem.today.title)
+    }
+
+    @ViewBuilder
+    private var content: some View {
         if let prompt = activeSession {
             SessionView(
                 prompt: prompt,

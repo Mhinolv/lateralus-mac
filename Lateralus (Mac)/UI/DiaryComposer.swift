@@ -17,6 +17,13 @@ struct DiaryComposer: View {
     @State private var saveErrorMessage = ""
     @State private var showSaveError = false
     @State private var showDiscardConfirmation = false
+    /// The draft file this composer owns for its life. Restore adopts the
+    /// orphan's ID instead.
+    @State private var draftID = UUID()
+    @State private var draftStatus: DraftStatus = .none
+    @State private var orphanDraft: DiaryDraft?
+    /// Set on save or discard, so a pending autosave does not write again.
+    @State private var finished = false
     @FocusState private var editorFocused: Bool
 
     private var canSave: Bool {
@@ -45,6 +52,10 @@ struct DiaryComposer: View {
             }
 
             VStack(alignment: .leading, spacing: 16) {
+                if let orphanDraft {
+                    recoveryBanner(for: orphanDraft)
+                }
+
                 ZStack(alignment: .topLeading) {
                     if text.isEmpty {
                         Text("Whatever's on your mind…")
@@ -81,8 +92,13 @@ struct DiaryComposer: View {
 
             Spacer(minLength: 0)
 
-            HStack {
+            HStack(spacing: 16) {
                 Spacer()
+                if let message = draftStatus.message {
+                    Text(message)
+                        .font(Theme.ui(12))
+                        .foregroundStyle(Theme.inkTertiary)
+                }
                 Button {
                     save()
                 } label: {
@@ -101,12 +117,23 @@ struct DiaryComposer: View {
         }
         .frame(minWidth: 560, idealWidth: 620, minHeight: 460)
         .background(AppBackground())
-        .onAppear { editorFocused = true }
+        .onAppear {
+            editorFocused = true
+            DiaryDraftOwnership.shared.claim(draftID)
+            orphanDraft = DiaryDraftStore.live.newestOrphan(excluding: DiaryDraftOwnership.shared.owned)
+        }
         .onDisappear {
             player.stop()
             if !saved {
                 recorder.discard()
             }
+            DiaryDraftOwnership.shared.release(draftID)
+        }
+        .task(id: text) {
+            // Autosave about one second after the last edit. A new edit
+            // cancels the wait.
+            do { try await Task.sleep(for: .seconds(1)) } catch { return }
+            writeDraft()
         }
         .interactiveDismissDisabled(hasUnsavedContent)
         .alert("Couldn’t Save", isPresented: $showSaveError) {
@@ -141,6 +168,7 @@ struct DiaryComposer: View {
             )
             recorder.markCommitted()
             saved = true
+            finishDraft()
             dismiss()
         } catch {
             saveErrorMessage = error.localizedDescription
@@ -159,6 +187,75 @@ struct DiaryComposer: View {
     private func closeImmediately() {
         player.stop()
         recorder.discard()
+        finishDraft()
         dismiss()
+    }
+
+    // MARK: - Drafts
+
+    private func writeDraft() {
+        guard !finished else { return }
+        do {
+            try DiaryDraftStore.live.write(id: draftID, text: text)
+            draftStatus = text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? .none : .saved
+        } catch {
+            draftStatus = .failed
+        }
+    }
+
+    private func finishDraft() {
+        finished = true
+        DiaryDraftStore.live.remove(id: draftID)
+    }
+
+    private func restore(_ draft: DiaryDraft) {
+        orphanDraft = nil
+        // Another window can restore the same draft first.
+        guard !DiaryDraftOwnership.shared.owned.contains(draft.id) else { return }
+        DiaryDraftOwnership.shared.release(draftID)
+        DiaryDraftStore.live.remove(id: draftID)
+        draftID = draft.id
+        DiaryDraftOwnership.shared.claim(draft.id)
+        text = DiaryDraftStore.merge(existing: text, draft: draft.text)
+        writeDraft()
+        editorFocused = true
+    }
+
+    private func recoveryBanner(for draft: DiaryDraft) -> some View {
+        HStack(spacing: 16) {
+            Text("Unsaved text from \(draft.updatedAt.formatted(date: .abbreviated, time: .shortened)) is available.")
+                .font(Theme.ui(13.5))
+                .foregroundStyle(Theme.accentStrong)
+            Spacer(minLength: 0)
+            Button("Discard") {
+                DiaryDraftStore.live.remove(id: draft.id)
+                orphanDraft = nil
+            }
+            .buttonStyle(.plain)
+            .font(Theme.ui(13.5))
+            .foregroundStyle(Theme.inkSecondary)
+            Button("Restore") { restore(draft) }
+                .buttonStyle(.plain)
+                .font(Theme.ui(13.5, .semibold))
+                .foregroundStyle(Theme.accent)
+        }
+        .padding(.vertical, 12)
+        .padding(.horizontal, 16)
+        .background(Theme.accentSoft, in: .rect(cornerRadius: Theme.radiusMedium))
+    }
+}
+
+/// Footer feedback for autosave. Never an alert.
+enum DraftStatus: Equatable {
+    case none
+    case saved
+    case failed
+
+    var message: String? {
+        switch self {
+        case .none: nil
+        case .saved: "Draft saved"
+        case .failed: "Draft not saved"
+        }
     }
 }

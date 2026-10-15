@@ -1,0 +1,305 @@
+import SwiftUI
+
+/// A vector sketch: an ordered list of strokes. Encoded as JSON into the
+/// entry row, so drawings stay editable, resolution-independent, and small.
+struct Sketch: Codable, Equatable {
+    struct Stroke: Codable, Equatable {
+        var points: [Point]
+        var red: Double
+        var green: Double
+        var blue: Double
+        var width: Double
+
+        var color: Color { Color(red: red, green: green, blue: blue) }
+    }
+
+    struct Point: Codable, Equatable {
+        var x: Double
+        var y: Double
+
+        var cgPoint: CGPoint { CGPoint(x: x, y: y) }
+    }
+
+    var strokes: [Stroke] = []
+
+    var isEmpty: Bool { strokes.isEmpty }
+
+    func encoded() -> Data? {
+        try? JSONEncoder().encode(self)
+    }
+
+    static func decode(_ data: Data) -> Sketch? {
+        try? JSONDecoder().decode(Sketch.self, from: data)
+    }
+}
+
+/// The pens available in the canvas. Ink colors are chosen to read well on
+/// the light paper surface.
+enum SketchPen: CaseIterable, Identifiable {
+    case ink, crimson, cobalt, forest, marigold, plum
+
+    var id: Self { self }
+
+    var color: Color {
+        switch self {
+        case .ink: Color(red: 0.13, green: 0.12, blue: 0.11)
+        case .crimson: Color(red: 0.78, green: 0.18, blue: 0.21)
+        case .cobalt: Color(red: 0.16, green: 0.32, blue: 0.75)
+        case .forest: Color(red: 0.13, green: 0.50, blue: 0.30)
+        case .marigold: Color(red: 0.89, green: 0.58, blue: 0.10)
+        case .plum: Color(red: 0.52, green: 0.25, blue: 0.63)
+        }
+    }
+
+    var components: (red: Double, green: Double, blue: Double) {
+        switch self {
+        case .ink: (0.13, 0.12, 0.11)
+        case .crimson: (0.78, 0.18, 0.21)
+        case .cobalt: (0.16, 0.32, 0.75)
+        case .forest: (0.13, 0.50, 0.30)
+        case .marigold: (0.89, 0.58, 0.10)
+        case .plum: (0.52, 0.25, 0.63)
+        }
+    }
+}
+
+/// An editable drawing surface: light paper, pen palette, three nib sizes,
+/// a stroke eraser, undo, and clear. Pointer-driven — mouse or trackpad.
+struct SketchCanvas: View {
+    @Binding var sketch: Sketch
+    let tint: Color
+
+    @State private var pen: SketchPen = .ink
+    @State private var nib: Double = 3
+    @State private var erasing = false
+    @State private var activeStroke: Sketch.Stroke?
+
+    private let nibSizes: [Double] = [1.5, 3, 7]
+
+    var body: some View {
+        VStack(spacing: 10) {
+            toolbar
+            canvas
+        }
+    }
+
+    private var toolbar: some View {
+        HStack(spacing: 14) {
+            HStack(spacing: 8) {
+                ForEach(SketchPen.allCases) { candidate in
+                    Button {
+                        pen = candidate
+                        erasing = false
+                    } label: {
+                        Circle()
+                            .fill(candidate.color)
+                            .frame(width: 18, height: 18)
+                            .overlay(
+                                Circle().strokeBorder(
+                                    Theme.ink.opacity(pen == candidate && !erasing ? 0.85 : 0.15),
+                                    lineWidth: 2
+                                )
+                            )
+                            .padding(2)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Pen \(String(describing: candidate))")
+                }
+            }
+
+            Divider().frame(height: 18)
+
+            HStack(spacing: 8) {
+                ForEach(nibSizes, id: \.self) { size in
+                    Button {
+                        nib = size
+                        erasing = false
+                    } label: {
+                        Circle()
+                            .fill(Theme.ink.opacity(nib == size && !erasing ? 0.85 : 0.3))
+                            .frame(width: size + 5, height: size + 5)
+                            .frame(width: 20, height: 20)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Nib \(Int(size)) points")
+                }
+            }
+
+            Divider().frame(height: 18)
+
+            Toggle(isOn: $erasing) {
+                Image(systemName: "eraser")
+            }
+            .toggleStyle(.button)
+            .buttonStyle(.borderless)
+            .tint(tint)
+            .accessibilityLabel("Eraser")
+            .help("Eraser — click or drag across a stroke to remove it")
+
+            Spacer()
+
+            Button {
+                if !sketch.strokes.isEmpty {
+                    sketch.strokes.removeLast()
+                }
+            } label: {
+                Image(systemName: "arrow.uturn.backward")
+            }
+            .buttonStyle(.borderless)
+            .disabled(sketch.strokes.isEmpty)
+            .keyboardShortcut("z", modifiers: [.command, .shift])
+            .accessibilityLabel("Undo last stroke")
+            .help("Undo last stroke")
+
+            Button("Clear") {
+                sketch.strokes.removeAll()
+            }
+            .buttonStyle(.borderless)
+            .disabled(sketch.strokes.isEmpty)
+        }
+        .font(.callout)
+    }
+
+    private var canvas: some View {
+        Canvas { context, _ in
+            for stroke in sketch.strokes {
+                context.stroke(
+                    SketchRendering.path(for: stroke),
+                    with: .color(stroke.color),
+                    style: StrokeStyle(lineWidth: stroke.width, lineCap: .round, lineJoin: .round)
+                )
+            }
+            if let activeStroke {
+                context.stroke(
+                    SketchRendering.path(for: activeStroke),
+                    with: .color(activeStroke.color),
+                    style: StrokeStyle(lineWidth: activeStroke.width, lineCap: .round, lineJoin: .round)
+                )
+            }
+        }
+        .background(SketchRendering.paper)
+        .clipShape(.rect(cornerRadius: Theme.radiusSmall))
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.radiusSmall)
+                .strokeBorder(Theme.divider, lineWidth: 1)
+        )
+        .frame(minHeight: 260)
+        .gesture(drawGesture)
+        .accessibilityLabel("Drawing canvas")
+    }
+
+    private var drawGesture: some Gesture {
+        DragGesture(minimumDistance: 0)
+            .onChanged { value in
+                let point = Sketch.Point(x: value.location.x, y: value.location.y)
+                if erasing {
+                    erase(at: value.location)
+                } else if activeStroke == nil {
+                    let rgb = pen.components
+                    activeStroke = Sketch.Stroke(
+                        points: [point], red: rgb.red, green: rgb.green, blue: rgb.blue, width: nib
+                    )
+                } else {
+                    activeStroke?.points.append(point)
+                }
+            }
+            .onEnded { _ in
+                if let finished = activeStroke {
+                    sketch.strokes.append(finished)
+                    activeStroke = nil
+                }
+            }
+    }
+
+    /// Removes any stroke passing near the pointer.
+    private func erase(at location: CGPoint) {
+        sketch.strokes.removeAll { stroke in
+            stroke.points.contains { point in
+                hypot(point.x - location.x, point.y - location.y) < max(10, stroke.width * 2)
+            }
+        }
+    }
+}
+
+/// Read-only display of a saved sketch, scaled to fit its container.
+struct SketchImage: View {
+    let data: Data
+
+    var body: some View {
+        if let sketch = Sketch.decode(data), !sketch.isEmpty {
+            let bounds = SketchRendering.bounds(of: sketch)
+            Canvas { context, size in
+                let scale = min(size.width / bounds.width, size.height / bounds.height, 1)
+                context.translateBy(
+                    x: (size.width - bounds.width * scale) / 2 - bounds.minX * scale,
+                    y: (size.height - bounds.height * scale) / 2 - bounds.minY * scale
+                )
+                context.scaleBy(x: scale, y: scale)
+                for stroke in sketch.strokes {
+                    context.stroke(
+                        SketchRendering.path(for: stroke),
+                        with: .color(stroke.color),
+                        style: StrokeStyle(lineWidth: stroke.width, lineCap: .round, lineJoin: .round)
+                    )
+                }
+            }
+            .background(SketchRendering.paper)
+            .clipShape(.rect(cornerRadius: Theme.radiusSmall))
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.radiusSmall)
+                    .strokeBorder(Theme.divider, lineWidth: 1)
+            )
+            .aspectRatio(max(bounds.width / max(bounds.height, 1), 0.5), contentMode: .fit)
+            .frame(maxHeight: 320)
+        }
+    }
+}
+
+enum SketchRendering {
+    /// The paper surface both the editor and viewer draw on — warmer and
+    /// lighter than the app's own surfaces, so it still reads as a
+    /// distinct drawing sheet rather than blending into the chrome.
+    /// Kept a shade above `Theme.background` for exactly that reason.
+    static let paper = Color(red: 0.992, green: 0.976, blue: 0.945)
+
+    /// Midpoint-smoothed path through a stroke's sampled points.
+    static func path(for stroke: Sketch.Stroke) -> Path {
+        var path = Path()
+        let points = stroke.points.map(\.cgPoint)
+        guard let first = points.first else { return path }
+        guard points.count > 1 else {
+            // A click without movement still leaves a dot.
+            path.addEllipse(in: CGRect(
+                x: first.x - stroke.width / 2, y: first.y - stroke.width / 2,
+                width: stroke.width, height: stroke.width
+            ))
+            return path
+        }
+        path.move(to: first)
+        for index in 1..<points.count {
+            let previous = points[index - 1]
+            let current = points[index]
+            let midpoint = CGPoint(x: (previous.x + current.x) / 2, y: (previous.y + current.y) / 2)
+            path.addQuadCurve(to: midpoint, control: previous)
+        }
+        if let last = points.last {
+            path.addLine(to: last)
+        }
+        return path
+    }
+
+    /// The padded bounding box of every stroke point.
+    static func bounds(of sketch: Sketch) -> CGRect {
+        var minX = Double.greatestFiniteMagnitude, minY = Double.greatestFiniteMagnitude
+        var maxX = -Double.greatestFiniteMagnitude, maxY = -Double.greatestFiniteMagnitude
+        for stroke in sketch.strokes {
+            for point in stroke.points {
+                minX = min(minX, point.x); minY = min(minY, point.y)
+                maxX = max(maxX, point.x); maxY = max(maxY, point.y)
+            }
+        }
+        guard minX <= maxX else { return CGRect(x: 0, y: 0, width: 1, height: 1) }
+        return CGRect(x: minX, y: minY, width: max(maxX - minX, 1), height: max(maxY - minY, 1))
+            .insetBy(dx: -16, dy: -16)
+    }
+}

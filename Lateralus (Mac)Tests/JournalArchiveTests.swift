@@ -207,7 +207,7 @@ final class JournalArchiveTests: XCTestCase {
         let declaration = try XCTUnwrap(declarations.first {
             $0["UTTypeIdentifier"] as? String == UTType.lateralusArchive.identifier
         })
-        XCTAssertEqual(UTType.lateralusArchive.identifier, "Mhinoverse.Lateralus--Mac-.archive")
+        XCTAssertEqual(UTType.lateralusArchive.identifier, try XCTUnwrap(Bundle.main.bundleIdentifier) + ".archive")
         XCTAssertTrue((declaration["UTTypeConformsTo"] as? [String] ?? []).contains("com.apple.package"))
         let tags = try XCTUnwrap(declaration["UTTypeTagSpecification"] as? [String: Any])
         XCTAssertEqual(tags["public.filename-extension"] as? [String], [JournalArchive.fileExtension])

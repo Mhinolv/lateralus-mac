@@ -81,6 +81,96 @@ final class EntryRepositoryTests: XCTestCase {
         XCTAssertTrue(try fetchAll().isEmpty, "Failed save must not leave a row behind")
     }
 
+    // MARK: - Editing response text
+
+    private struct ForcedSaveFailure: Error {}
+
+    @discardableResult
+    private func saveTextEntry(_ text: String, date: Date = .now) throws -> JournalEntry {
+        try repository.save(
+            prompt: PromptEngine.prompt(for: .redefine, comboIndex: 0),
+            responseText: text, isDaily: true,
+            temporaryVoiceNoteURL: nil, sketchData: nil, date: date
+        )
+    }
+
+    /// Reads the entry from a fresh context, so the result shows the store, not memory.
+    private func storedText(of entry: JournalEntry) throws -> String? {
+        let id = entry.id
+        let fresh = ModelContext(container)
+        return try fresh.fetch(FetchDescriptor<JournalEntry>(predicate: #Predicate { $0.id == id }))
+            .first?.responseText
+    }
+
+    func testUpdateResponseTextPersistsTrimmedText() throws {
+        let entry = try saveTextEntry("A place taht recognizes you.")
+        try repository.updateResponseText(of: entry, to: "  A place that recognizes you.\n")
+        XCTAssertEqual(entry.responseText, "A place that recognizes you.")
+        XCTAssertEqual(try storedText(of: entry), "A place that recognizes you.")
+        XCTAssertEqual(try fetchAll().count, 1, "An edit must not add an entry")
+    }
+
+    func testUpdateResponseTextKeepsEverythingElse() throws {
+        let date = Date(timeIntervalSince1970: 1_700_000_000)
+        let temp = try makeTemporaryRecording()
+        let entry = try repository.save(
+            prompt: PromptEngine.prompt(for: .redefine, comboIndex: 0),
+            responseText: "before", isDaily: true,
+            temporaryVoiceNoteURL: temp, sketchData: Data("sketch".utf8), date: date
+        )
+        let file = entry.voiceNoteFile
+        try repository.updateResponseText(of: entry, to: "after")
+        XCTAssertEqual(entry.date, date)
+        XCTAssertEqual(entry.exercise, .redefine)
+        XCTAssertTrue(entry.isDaily)
+        XCTAssertEqual(entry.voiceNoteFile, file)
+        XCTAssertEqual(entry.sketchData, Data("sketch".utf8))
+        XCTAssertNotNil(store.url(forFile: try XCTUnwrap(file)), "An edit must not touch the voice note")
+    }
+
+    func testUpdateResponseTextFailureKeepsOriginalText() throws {
+        let entry = try saveTextEntry("original")
+        var failing = repository
+        failing.commitChanges = { _ in throw ForcedSaveFailure() }
+        XCTAssertThrowsError(try failing.updateResponseText(of: entry, to: "edited"))
+        XCTAssertEqual(entry.responseText, "original")
+        XCTAssertEqual(try storedText(of: entry), "original")
+    }
+
+    func testUpdateResponseTextRejectsEmptyText() throws {
+        let entry = try saveTextEntry("original")
+        XCTAssertThrowsError(try repository.updateResponseText(of: entry, to: " \n\t ")) { error in
+            XCTAssertEqual(error as? EntryRepositoryError, .emptyResponse)
+        }
+        XCTAssertEqual(entry.responseText, "original")
+        XCTAssertEqual(try storedText(of: entry), "original")
+    }
+
+    func testUpdateResponseTextDoesNotChangeActivity() throws {
+        let calendar = Calendar(identifier: .gregorian)
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        let yesterday = try XCTUnwrap(calendar.date(byAdding: .day, value: -1, to: now))
+        try saveTextEntry("today", date: now)
+        let older = try saveTextEntry("yesterday", date: yesterday)
+
+        func metrics() throws -> ActivityMetrics {
+            ActivityMetrics(
+                entries: try fetchAll().map { (date: $0.date, exercise: $0.exercise) },
+                now: now, calendar: calendar
+            )
+        }
+        let before = try metrics()
+        try repository.updateResponseText(of: older, to: "yesterday, edited today")
+        let after = try metrics()
+
+        XCTAssertEqual(after.total, before.total)
+        XCTAssertEqual(after.streak, before.streak)
+        XCTAssertEqual(after.thisWeek, before.thisWeek)
+        XCTAssertEqual(after.disciplineCounts, before.disciplineCounts)
+        XCTAssertEqual(after.lastSevenDays.map(\.count), before.lastSevenDays.map(\.count))
+        XCTAssertEqual(older.date, yesterday)
+    }
+
     // MARK: - Deleting
 
     func testDeleteRemovesEntryAndVoiceNote() throws {

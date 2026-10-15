@@ -27,7 +27,7 @@ jobs:
           set -o pipefail
           xcodebuild -project "Lateralus (Mac).xcodeproj" -scheme "Lateralus (Mac)" \
             -configuration Debug -destination platform=macOS -derivedDataPath build/DerivedData \
-            CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= \
+            CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= LATERALUS_ID_SUFFIX=.team \
             -only-testing "Lateralus (Mac)Tests" test 2>&1 | tee xcodebuild.log | grep -E "Test case|error:|\*\* (BUILD|TEST)"
   ci-gate:
     needs: build-and-test

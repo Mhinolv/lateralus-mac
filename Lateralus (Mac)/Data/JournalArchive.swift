@@ -5,8 +5,10 @@ import UniformTypeIdentifiers
 extension UTType {
     /// A `.lateralusarchive` package. Declared in Info.plist as conforming to
     /// `com.apple.package`, so Finder shows the archive folder as one item.
+    /// The identifier is `<bundle ID>.archive`, the same as Info.plist, so team
+    /// builds with `LATERALUS_ID_SUFFIX` declare and use the same type.
     nonisolated static let lateralusArchive = UTType(
-        exportedAs: "Mhinoverse.Lateralus--Mac-.archive",
+        exportedAs: (Bundle.main.bundleIdentifier ?? "Mhinoverse.Lateralus--Mac-") + ".archive",
         conformingTo: .package
     )
 }

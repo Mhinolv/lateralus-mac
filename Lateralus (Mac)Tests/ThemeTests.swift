@@ -91,6 +91,6 @@ final class ThemeTests: XCTestCase {
 
         let crimson = SketchPen.crimson.components
         let other = Sketch.Stroke(points: [], red: crimson.red, green: crimson.green, blue: crimson.blue, width: 3)
-        XCTAssertEqual(try resolve(other.color, dark: false), try resolve(other.color, dark: true))
+        XCTAssertEqual(try resolve(other.color, dark: true), RGBA(hex: 0xE5484D, alpha: 100), "Every pen lifts in dark mode (#25)")
     }
 }

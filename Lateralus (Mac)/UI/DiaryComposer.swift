@@ -105,7 +105,7 @@ struct DiaryComposer: View {
                     PrimaryActionButtonLabel(title: "Save to Journal", enabled: canSave)
                 }
                 .buttonStyle(.plain)
-                .disabled(!canSave)
+                .disabled(!canSave || ArchiveRestoreStatus.shared.isBusy)
                 .keyboardShortcut("s", modifiers: .command)
                 .help("Save to journal (⌘S)")
             }
@@ -117,6 +117,12 @@ struct DiaryComposer: View {
         }
         .frame(minWidth: 560, idealWidth: 620, minHeight: 460)
         .background(AppBackground())
+        .overlay {
+            // A composer already open in another window blocks too.
+            if ArchiveRestoreStatus.shared.isBusy {
+                ArchiveRestoreScrim(status: .shared)
+            }
+        }
         .onAppear {
             editorFocused = true
             DiaryDraftOwnership.shared.claim(draftID)

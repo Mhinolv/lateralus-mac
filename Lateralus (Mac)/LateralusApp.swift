@@ -41,7 +41,7 @@ struct LateralusCommands: Commands {
                 appModel?.showDiaryComposer = true
             }
             .keyboardShortcut("n", modifiers: .command)
-            .disabled(appModel == nil)
+            .disabled(appModel == nil || ArchiveRestoreStatus.shared.isBusy)
 
             Divider()
 
@@ -57,6 +57,13 @@ struct LateralusCommands: Commands {
                 appModel?.pendingArchiveExport = true
             }
             .disabled(!(appModel?.canExportArchive ?? false))
+
+            Divider()
+
+            Button("Restore Archive…") {
+                appModel?.pendingArchiveRestore = true
+            }
+            .disabled(!(appModel?.canRestoreArchive ?? false))
         }
         CommandGroup(after: .pasteboard) {
             Button("Find in Journal") {

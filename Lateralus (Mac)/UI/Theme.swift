@@ -43,6 +43,8 @@ enum Theme {
     /// A quieter rule, for dividing text from text rather than surface from
     /// surface.
     static let dividerSoft = ink.opacity(0.07)
+    /// Covers a window that must not take input, such as during a restore.
+    static let scrim = background.opacity(0.88)
     static let hoverFill = ink.opacity(0.05)
     static let pressedFill = ink.opacity(0.1)
 

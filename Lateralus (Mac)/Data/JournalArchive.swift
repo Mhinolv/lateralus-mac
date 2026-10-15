@@ -95,11 +95,76 @@ nonisolated enum JournalArchive {
     }
 
     enum ValidationError: Error, Equatable {
+        case notArchive
         case unsupportedFormat
         case missingFile(String)
         case checksumMismatch(String)
         case unlistedFile(String)
         case entryCountMismatch
+        /// A path that is absolute, climbs with `..`, or resolves outside
+        /// the package through a symbolic link.
+        case unsafePath(String)
+        case duplicateEntryID(UUID)
+    }
+
+    /// The reasons File > Restore Archive… stops, worded for the alert.
+    enum RestoreError: LocalizedError, Equatable {
+        case notArchive
+        case unsupportedVersion
+        case damaged
+        case unsafePath
+        case duplicateEntry
+        case journalNotEmpty
+        /// A failure after the restore started. Nothing was kept.
+        case failed(String)
+
+        init(_ error: any Error) {
+            switch error {
+            case let error as RestoreError:
+                self = error
+            case let error as ValidationError:
+                switch error {
+                case .notArchive, .missingFile(JournalArchive.manifestFilename): self = .notArchive
+                case .unsupportedFormat: self = .unsupportedVersion
+                case .missingFile, .checksumMismatch, .unlistedFile, .entryCountMismatch: self = .damaged
+                case .unsafePath: self = .unsafePath
+                case .duplicateEntryID: self = .duplicateEntry
+                }
+            case is DecodingError:
+                self = .notArchive
+            default:
+                self = .failed(error.localizedDescription)
+            }
+        }
+
+        var errorDescription: String? {
+            switch self {
+            case .notArchive: "This file is not a Lateralus archive."
+            case .unsupportedVersion: "This archive version is not supported. Update Lateralus, then try again."
+            case .damaged: "A file in this archive is damaged. Nothing was restored."
+            case .unsafePath: "This archive points to a file outside the archive. Nothing was restored."
+            case .duplicateEntry: "This archive lists the same entry twice. Nothing was restored."
+            case .journalNotEmpty: "Restore works only into an empty journal."
+            case .failed(let message): "Nothing was restored. \(message)"
+            }
+        }
+    }
+
+    /// A validated archive, ready to restore. Every attachment path in
+    /// `entries` is safe and listed in the manifest with a good checksum.
+    struct RestorePlan: Equatable, Sendable {
+        var root: URL
+        var entries: [Entry]
+
+        var attachmentCount: Int {
+            entries.reduce(0) { count, entry in
+                count + (entry.sketchFile == nil ? 0 : 1) + (entry.voiceNoteFile == nil ? 0 : 1)
+            }
+        }
+
+        var displayName: String {
+            FileManager.default.displayName(atPath: root.path(percentEncoded: false))
+        }
     }
 
     // MARK: - Coding
@@ -254,13 +319,33 @@ nonisolated enum JournalArchive {
     /// entry count matches `entries.json`.
     @discardableResult
     static func validate(at root: URL) throws -> Manifest {
+        try validatedContents(at: root).manifest
+    }
+
+    /// Validates the package at `url` for File > Restore Archive…. Nothing
+    /// is written. The package is matched by its extension, not its type
+    /// identifier, because team builds declare a different identifier.
+    static func restorePlan(at url: URL) throws -> RestorePlan {
+        var isDirectory: ObjCBool = false
+        guard url.pathExtension.lowercased() == fileExtension,
+              FileManager.default.fileExists(atPath: url.path(percentEncoded: false), isDirectory: &isDirectory),
+              isDirectory.boolValue
+        else { throw ValidationError.notArchive }
+        return RestorePlan(root: url, entries: try validatedContents(at: url).document.entries)
+    }
+
+    private static func validatedContents(at root: URL) throws -> (manifest: Manifest, document: EntriesDocument) {
         let manifestURL = root.appending(path: manifestFilename)
         guard let manifestData = try? Data(contentsOf: manifestURL) else {
             throw ValidationError.missingFile(manifestFilename)
         }
         let manifest = try decoder.decode(Manifest.self, from: manifestData)
-        guard manifest.format == format, manifest.formatVersion <= formatVersion else {
-            throw ValidationError.unsupportedFormat
+        guard manifest.format == format else { throw ValidationError.notArchive }
+        guard manifest.formatVersion <= formatVersion else { throw ValidationError.unsupportedFormat }
+
+        // Check every path before any file is read through it.
+        for file in manifest.files {
+            try checkSafe(file.path, in: root)
         }
 
         for file in manifest.files {
@@ -283,10 +368,40 @@ nonisolated enum JournalArchive {
         let document = try decoder.decode(
             EntriesDocument.self, from: Data(contentsOf: root.appending(path: entriesFilename))
         )
+        guard document.formatVersion <= formatVersion else { throw ValidationError.unsupportedFormat }
         guard document.entries.count == manifest.entryCount else {
             throw ValidationError.entryCountMismatch
         }
-        return manifest
+
+        var ids: Set<UUID> = []
+        for entry in document.entries {
+            guard ids.insert(entry.id).inserted else { throw ValidationError.duplicateEntryID(entry.id) }
+            for path in [entry.sketchFile, entry.voiceNoteFile].compactMap(\.self) {
+                try checkSafe(path, in: root)
+                guard listed.contains(path), path != entriesFilename else {
+                    throw ValidationError.missingFile(path)
+                }
+            }
+        }
+        return (manifest, document)
+    }
+
+    /// Throws `unsafePath` unless `path` is a plain relative path that
+    /// stays inside `root`, also after symbolic links resolve.
+    private static func checkSafe(_ path: String, in root: URL) throws {
+        let components = path.split(separator: "/", omittingEmptySubsequences: false)
+        guard !path.isEmpty, !path.hasPrefix("/"), !path.hasPrefix("~"),
+              !components.contains(where: { $0.isEmpty || $0 == "." || $0 == ".." })
+        else { throw ValidationError.unsafePath(path) }
+
+        // A missing file is reported later as missing, not as unsafe.
+        let url = root.appending(path: path)
+        guard FileManager.default.fileExists(atPath: url.path(percentEncoded: false)) else { return }
+        let rootPath = root.resolvingSymlinksInPath().path(percentEncoded: false)
+        let prefix = rootPath.hasSuffix("/") ? rootPath : rootPath + "/"
+        guard url.resolvingSymlinksInPath().path(percentEncoded: false).hasPrefix(prefix) else {
+            throw ValidationError.unsafePath(path)
+        }
     }
 
     static func sha256(_ data: Data) -> String {

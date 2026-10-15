@@ -31,6 +31,16 @@ struct AttachmentStore {
         return filename
     }
 
+    /// Copies a voice note from a restored archive into the store under a
+    /// new stable filename. The source stays in place. Nonisolated so the
+    /// copy can run off the main actor.
+    nonisolated func commitCopy(of sourceURL: URL) throws -> String {
+        try FileManager.default.createDirectory(at: voiceNotesDirectory, withIntermediateDirectories: true)
+        let filename = "note-\(UUID().uuidString).m4a"
+        try FileManager.default.copyItem(at: sourceURL, to: voiceNotesDirectory.appending(path: filename))
+        return filename
+    }
+
     func url(forFile filename: String) -> URL? {
         let url = voiceNotesDirectory.appending(path: filename)
         return FileManager.default.fileExists(atPath: url.path(percentEncoded: false)) ? url : nil

@@ -235,26 +235,4 @@ enum Exercise: String, CaseIterable, Codable, Identifiable, Hashable {
             ? NSColor(srgbRed: 212 / 255, green: 242 / 255, blue: 90 / 255, alpha: 1)
             : NSColor(srgbRed: 74 / 255, green: 99 / 255, blue: 0, alpha: 1)
     })
-
-    /// Two-letter mark shown in the sidebar. Twelve SF Symbols at sidebar
-    /// size all resolve to "small grey shape"; initials stay legible and
-    /// turn the practice list into something closer to a contents page.
-    var monogram: String {
-        switch self {
-        case .alternateUses: "AU"
-        case .twistedUses: "TU"
-        case .realityShift: "RS"
-        case .fusion: "FU"
-        case .backstory: "BS"
-        case .perspectiveFlip: "PF"
-        case .redefine: "RD"
-        case .coinAWord: "CW"
-        case .commonThread: "CT"
-        case .positiveSpin: "PS"
-        case .inventions: "IN"
-        case .miniMythology: "MM"
-        case .diary: "DY"
-        case .unknown: "—"
-        }
-    }
 }

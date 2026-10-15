@@ -21,9 +21,9 @@ struct EntryDetailView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
+            VStack(alignment: .leading, spacing: 18) {
                 header
-                promptCard
+                prompt
                 if let editBinding = Binding($edit) {
                     EntryTextEditor(
                         edit: editBinding,
@@ -32,15 +32,15 @@ struct EntryDetailView: View {
                     )
                 } else if !entry.responseText.isEmpty {
                     Text(entry.responseText)
-                        .font(Theme.ui(16))
-                        .lineSpacing(6)
+                        .font(EntryTextEditor.responseFont)
+                        .lineSpacing(EntryTextEditor.responseLineSpacing)
                         .foregroundStyle(Theme.ink)
                         .fixedSize(horizontal: false, vertical: true)
                         .textSelection(.enabled)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 if let file = entry.voiceNoteFile {
-                    voiceNoteCard(file: file)
+                    voiceNote(file: file)
                 }
                 if let data = entry.sketchData {
                     SketchImage(data: data)
@@ -54,10 +54,10 @@ struct EntryDetailView: View {
                         }
                 }
             }
-            .padding(.horizontal, 40)
-            .padding(.vertical, 48)
-            .frame(maxWidth: 720, alignment: .leading)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 36)
+            .padding(.vertical, 30)
+            .frame(maxWidth: 640, alignment: .leading)
+            .frame(maxWidth: .infinity)
         }
         .onDisappear { player.stop() }
         .onChange(of: entry.id) { player.stop() }
@@ -89,24 +89,20 @@ struct EntryDetailView: View {
     }
 
     private var header: some View {
-        HStack(spacing: 10) {
-            Tag(text: entry.exercise.title, size: 12)
+        HStack(spacing: 8) {
+            Tag(text: entry.exercise.title, size: 12.5)
             if entry.isDaily { Badge(text: "Daily") }
             Text(entry.date, format: .dateTime.weekday(.abbreviated).month(.abbreviated).day().hour().minute())
-                .font(Theme.ui(13))
+                .font(Theme.ui(12.5))
                 .foregroundStyle(Theme.inkTertiary)
-            Spacer(minLength: 12)
+                .lineLimit(1)
+            Spacer(minLength: 8)
 
             if edit == nil && !entry.responseText.isEmpty {
                 Button {
                     edit = ResponseEdit(original: entry.responseText)
                 } label: {
-                    Image(systemName: "square.and.pencil")
-                        .font(.system(size: 13))
-                        .foregroundStyle(Theme.inkTertiary)
-                        .frame(width: 30, height: 30)
-                        .contentShape(.rect)
-                        .hoverHighlight()
+                    SecondaryActionButtonLabel(title: "Edit", systemImage: "square.and.pencil", small: true)
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("detail-edit")
@@ -118,12 +114,7 @@ struct EntryDetailView: View {
                 Button {
                     exportSketch(sketch)
                 } label: {
-                    Image(systemName: "square.and.arrow.up")
-                        .font(.system(size: 13))
-                        .foregroundStyle(Theme.inkTertiary)
-                        .frame(width: 30, height: 30)
-                        .contentShape(.rect)
-                        .hoverHighlight()
+                    IconCapsuleLabel(systemImage: "square.and.arrow.up")
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("detail-export-sketch")
@@ -134,12 +125,7 @@ struct EntryDetailView: View {
             Button {
                 onDelete()
             } label: {
-                Image(systemName: "trash")
-                    .font(.system(size: 13))
-                    .foregroundStyle(Theme.inkTertiary)
-                    .frame(width: 30, height: 30)
-                    .contentShape(.rect)
-                    .hoverHighlight()
+                IconCapsuleLabel(systemImage: "trash")
             }
             .buttonStyle(.plain)
             .disabled(edit != nil)
@@ -149,53 +135,68 @@ struct EntryDetailView: View {
         }
     }
 
-    /// The prompt recap, in an accent wash and the display serif — it's the
-    /// question quoted back, not another paragraph of the answer.
+    /// The prompt recap: the display serif on the ground, no wash — it's
+    /// the question quoted back, not another paragraph of the answer. A
+    /// rule divides it from the response.
     @ViewBuilder
-    private var promptCard: some View {
+    private var prompt: some View {
         if entry.exercise != .diary {
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 6) {
                 Text(entry.promptHeadline)
-                    .font(Theme.display(19, weight: .regular))
-                    .lineSpacing(3)
-                    .foregroundStyle(Theme.accentStrong)
+                    .font(Theme.display(28, weight: .regular))
+                    .kerning(-0.3)
+                    .foregroundStyle(Theme.ink)
                     .fixedSize(horizontal: false, vertical: true)
                     .textSelection(.enabled)
                 if let detail = entry.promptDetail {
-                    Text(detail)
-                        .font(Theme.ui(13.5))
-                        .foregroundStyle(Theme.accentStrong.opacity(0.8))
+                    Text(Self.detailLine(label: entry.prompt.detailLabel, detail: detail))
+                        .font(Theme.ui(13))
+                        .foregroundStyle(Theme.inkTertiary)
                         .fixedSize(horizontal: false, vertical: true)
                         .textSelection(.enabled)
                 }
+                Rectangle()
+                    .fill(Theme.divider)
+                    .frame(height: 1)
+                    .padding(.top, 12)
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 16)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Theme.accentSoft, in: .rect(cornerRadius: Theme.radiusMedium))
         }
     }
 
+    /// "The Catch · It must make no sound." — or the detail alone when its
+    /// discipline has no label.
+    static func detailLine(label: String?, detail: String) -> String {
+        guard let label, !label.isEmpty else { return detail }
+        return "\(label) · \(detail)"
+    }
+
     @ViewBuilder
-    private func voiceNoteCard(file: String) -> some View {
+    private func voiceNote(file: String) -> some View {
         if let url = AttachmentStore.live.url(forFile: file) {
             Button {
                 player.toggle(url: url)
             } label: {
-                Label(
-                    player.isPlaying ? "Pause voice note" : "Play voice note",
-                    systemImage: player.isPlaying ? "pause.circle.fill" : "play.circle.fill"
-                )
-                .font(Theme.ui(13.5, .medium))
-                .foregroundStyle(Theme.inkSecondary)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Theme.surface, in: .rect(cornerRadius: Theme.radiusSmall))
-                .contentShape(.rect)
-                .hoverHighlight()
+                HStack(spacing: 12) {
+                    Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(Theme.primaryLabel)
+                        .frame(width: 26, height: 26)
+                        .background(Theme.primaryFill, in: .circle)
+                    Text(player.isPlaying ? "Pause voice note" : "Play voice note")
+                        .font(Theme.ui(13, .medium))
+                        .foregroundStyle(Theme.inkSecondary)
+                }
+                .padding(.leading, 6)
+                .padding(.trailing, 16)
+                .padding(.vertical, 5)
+                .background(Theme.surface, in: .capsule)
+                .overlay(Capsule().strokeBorder(Theme.divider, lineWidth: 1))
+                .contentShape(.capsule)
+                .hoverHighlight(in: Capsule())
             }
             .buttonStyle(.plain)
+            .accessibilityLabel(player.isPlaying ? "Pause voice note" : "Play voice note")
         } else {
             Label("This entry's voice note file is missing.", systemImage: "waveform.slash")
                 .font(Theme.ui(12))

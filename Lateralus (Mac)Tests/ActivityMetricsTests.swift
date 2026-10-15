@@ -88,4 +88,68 @@ final class ActivityMetricsTests: XCTestCase {
         // Diary still counts toward activity totals.
         XCTAssertEqual(m.total, 4)
     }
+
+    func testDisciplinesTriedCountsPracticeOnly() {
+        XCTAssertEqual(metrics([]).disciplinesTried, 0)
+        let m = metrics([
+            (daysAgo(0), .fusion),
+            (daysAgo(0), .fusion),
+            (daysAgo(1), .diary),
+            (daysAgo(2), .unknown),
+            (daysAgo(2), .redefine),
+        ])
+        XCTAssertEqual(m.disciplinesTried, 2)
+        let all = metrics(Exercise.practice.map { (daysAgo(0), $0) })
+        XCTAssertEqual(all.disciplinesTried, 12)
+    }
+
+    func testLeadingDisciplineIsNilWithoutPractice() {
+        XCTAssertNil(metrics([]).leadingDiscipline)
+        XCTAssertNil(metrics([(daysAgo(0), .diary), (daysAgo(1), .diary)]).leadingDiscipline)
+    }
+
+    func testLeadingDisciplineTakesTheHighestCount() {
+        let m = metrics([
+            (daysAgo(0), .miniMythology),
+            (daysAgo(1), .miniMythology),
+            (daysAgo(2), .fusion),
+            (daysAgo(3), .diary),
+            (daysAgo(3), .diary),
+            (daysAgo(3), .diary),
+        ])
+        XCTAssertEqual(m.leadingDiscipline, .miniMythology)
+    }
+
+    func testLeadingDisciplineTieGoesToCatalogOrder() {
+        // Fusion comes before Inventions in the catalog, whatever the insert order.
+        let m = metrics([(daysAgo(0), .inventions), (daysAgo(1), .fusion)])
+        XCTAssertEqual(m.leadingDiscipline, .fusion)
+        let reversed = metrics([(daysAgo(0), .fusion), (daysAgo(1), .inventions)])
+        XCTAssertEqual(reversed.leadingDiscipline, .fusion)
+    }
+
+    func testBalanceDotsScaleToTheLeader() {
+        XCTAssertEqual(ActivityMetrics.balanceDots(count: 6, max: 6), 6)
+        XCTAssertEqual(ActivityMetrics.balanceDots(count: 3, max: 6), 3)
+        XCTAssertEqual(ActivityMetrics.balanceDots(count: 40, max: 40), 6)
+        XCTAssertEqual(ActivityMetrics.balanceDots(count: 1, max: 1), 6)
+        // 6 × 5 ÷ 12 = 2.5 rounds up.
+        XCTAssertEqual(ActivityMetrics.balanceDots(count: 5, max: 12), 3)
+        // 6 × 3 ÷ 10 = 1.8 rounds to 2.
+        XCTAssertEqual(ActivityMetrics.balanceDots(count: 3, max: 10), 2)
+    }
+
+    func testBalanceDotsShowAtLeastOneForAnyEntry() {
+        // 6 × 1 ÷ 100 = 0.06 would round to zero.
+        XCTAssertEqual(ActivityMetrics.balanceDots(count: 1, max: 100), 1)
+        XCTAssertEqual(ActivityMetrics.balanceDots(count: 0, max: 100), 0)
+    }
+
+    func testBalanceDotsWithNoLeaderOrBadInput() {
+        XCTAssertEqual(ActivityMetrics.balanceDots(count: 0, max: 0), 0)
+        XCTAssertEqual(ActivityMetrics.balanceDots(count: 3, max: 0), 0)
+        XCTAssertEqual(ActivityMetrics.balanceDots(count: -1, max: 5), 0)
+        // A count above the leader never exceeds the slots.
+        XCTAssertEqual(ActivityMetrics.balanceDots(count: 9, max: 3), 6)
+    }
 }

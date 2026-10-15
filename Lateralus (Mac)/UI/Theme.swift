@@ -18,7 +18,7 @@ enum Theme {
     static let background = adaptive(0xF5F3EC, 0x111318)
     /// Cards, inputs, and any surface that lifts off the ground.
     static let surface = adaptive(0xFFFFFF, 0x191C23)
-    /// The deepest step — chart tracks, monogram tiles, disabled fills.
+    /// The deepest step — search fields, disabled fills.
     static let surfaceSunken = adaptive(0xECE9DF, 0x222630)
     /// The sidebar column, a step outside the ground.
     static let sidebar = adaptive(0xEDEAE1, 0x0C0E12)
@@ -298,33 +298,47 @@ private struct ElevationModifier: ViewModifier {
     }
 }
 
-/// Uppercase kicker label — the system's one recurring structural motif,
-/// sitting above headlines and cards.
+/// A quiet kicker label in sentence case, sitting above headlines,
+/// sections, and day groups.
 struct SectionLabel: View {
     let text: String
-    var tint: Color = Theme.accent
+    var tint: Color = Theme.inkTertiary
 
     var body: some View {
         Text(text)
-            .font(Theme.ui(11, .semibold))
-            .textCase(.uppercase)
-            .kerning(0.9)
+            .font(Theme.ui(12, .semibold))
             .foregroundStyle(tint)
     }
 }
 
-/// A discipline label. Deliberately not a chip: at the sizes it appears
-/// (journal rows, recent entries, entry headers) an outline around every
-/// row's tag turned the list into a grid of boxes. Accent-colored text
-/// carries the same information and lets the row breathe.
-struct Tag: View {
-    let text: String
-    var size: CGFloat = 11
+/// The 6 pt dot that marks a discipline. There are no per-discipline hues,
+/// so the dot is `accent` where the discipline is the point and quiet ink
+/// everywhere else.
+struct DisciplineDot: View {
+    var color: Color = Theme.accent
 
     var body: some View {
-        Text(text)
-            .font(Theme.ui(size, .semibold))
-            .foregroundStyle(Theme.accent)
+        Circle()
+            .fill(color)
+            .frame(width: 6, height: 6)
+            .accessibilityHidden(true)
+    }
+}
+
+/// A discipline label: an accent dot and the name in ink. Deliberately not
+/// a chip — an outline around every row's tag turned the list into a grid
+/// of boxes.
+struct Tag: View {
+    let text: String
+    var size: CGFloat = 12
+
+    var body: some View {
+        HStack(spacing: 6) {
+            DisciplineDot()
+            Text(text)
+                .font(Theme.ui(size, .semibold))
+                .foregroundStyle(Theme.ink)
+        }
     }
 }
 
@@ -361,26 +375,6 @@ struct StreakPill: View {
             .background(Theme.accentSoft, in: .capsule)
             .opacity(days > 0 ? 1 : 0.5)
             .help("Consecutive days with at least one journal entry")
-    }
-}
-
-/// The two-letter mark that stands in for each discipline in the sidebar.
-/// Twelve glyph-based icons at 13 pt all read as "small grey shape"; two
-/// letters are legible, and the list scans as a contents page.
-struct DisciplineMonogram: View {
-    let letters: String
-    var selected: Bool = false
-
-    var body: some View {
-        Text(letters)
-            .font(Theme.ui(10, .bold))
-            .kerning(0.2)
-            .foregroundStyle(selected ? Theme.accentStrong : Theme.inkSecondary)
-            .frame(width: 24, height: 24)
-            .background(
-                selected ? Theme.accentSoft : Theme.surfaceSunken,
-                in: .rect(cornerRadius: Theme.radiusSmall)
-            )
     }
 }
 
@@ -475,28 +469,52 @@ struct EmptyStateView<Actions: View>: View {
 }
 
 /// The system's secondary action: a surface capsule, hairline, ink text.
+/// `small` is the header-sized step, 30 pt high.
 struct SecondaryActionButtonLabel: View {
     let title: String
     var systemImage: String?
     var fullWidth: Bool = false
+    var small: Bool = false
 
     var body: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: small ? 5 : 6) {
             if let systemImage {
-                Image(systemName: systemImage).font(.system(size: 12, weight: .semibold))
+                Image(systemName: systemImage).font(.system(size: small ? 11 : 12, weight: .semibold))
             }
             Text(title)
         }
-        .font(Theme.ui(14, .semibold))
+        .font(Theme.ui(small ? 12.5 : 14, .semibold))
         .foregroundStyle(Theme.ink)
         .frame(maxWidth: fullWidth ? .infinity : nil)
-        .padding(.horizontal, fullWidth ? 0 : 16)
-        .padding(.vertical, 10)
+        .frame(height: small ? 30 : nil)
+        .padding(.horizontal, fullWidth ? 0 : small ? 12 : 16)
+        .padding(.vertical, small ? 0 : 10)
         .background(Theme.surface, in: .capsule)
         .overlay(
             Capsule().strokeBorder(Theme.divider, lineWidth: 1)
         )
         .contentShape(.capsule)
         .hoverHighlight(in: Capsule())
+    }
+}
+
+/// A 30 pt round icon control: `surface` with a hairline, or an `accentSoft`
+/// wash with an `accent` icon while the control is active, such as a filter
+/// that is on.
+struct IconCapsuleLabel: View {
+    let systemImage: String
+    var active: Bool = false
+
+    var body: some View {
+        Image(systemName: systemImage)
+            .font(.system(size: 12.5, weight: .medium))
+            .foregroundStyle(active ? Theme.accent : Theme.inkSecondary)
+            .frame(width: 30, height: 30)
+            .background(active ? Theme.accentSoft : Theme.surface, in: .circle)
+            .overlay(
+                Circle().strokeBorder(active ? .clear : Theme.divider, lineWidth: 1)
+            )
+            .contentShape(.circle)
+            .hoverHighlight(in: Circle())
     }
 }

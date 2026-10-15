@@ -7,6 +7,7 @@ struct JournalView: View {
     @Query(sort: \JournalEntry.date, order: .reverse) private var entries: [JournalEntry]
     @Environment(\.modelContext) private var modelContext
     @Environment(AppModel.self) private var appModel
+    @Environment(\.appNow) private var appNow
 
     @State private var searchText = ""
     @State private var typeFilter: Exercise?
@@ -159,9 +160,9 @@ struct JournalView: View {
                 Image(systemName: "magnifyingglass")
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(Theme.inkTertiary)
-                TextField("Search entries…", text: $searchText)
+                TextField("Search your journal", text: $searchText)
                     .textFieldStyle(.plain)
-                    .font(Theme.ui(14))
+                    .font(Theme.ui(13.5))
                     .foregroundStyle(Theme.ink)
                     .focused($searchFocused)
                     .accessibilityIdentifier("journal-search")
@@ -178,8 +179,8 @@ struct JournalView: View {
                 }
             }
             .padding(.horizontal, 12)
-            .padding(.vertical, 9)
-            .inputWell(fill: Theme.surface)
+            .frame(height: 30)
+            .background(Theme.surfaceSunken, in: .capsule)
 
             filterMenu
             dateFilterButton
@@ -209,12 +210,13 @@ struct JournalView: View {
     private var listPane: some View {
         if entries.isEmpty {
             emptyState
+                .background(Theme.sidebar)
         } else {
             VStack(spacing: 0) {
                 controlsHeader
                 entryList
             }
-            .background(Theme.background)
+            .background(Theme.sidebar)
         }
     }
 
@@ -225,11 +227,7 @@ struct JournalView: View {
     private var entryList: some View {
         List(selection: listSelection) {
                 ForEach(grouped, id: \.day) { group in
-                    Text(group.day, format: .dateTime.weekday(.wide).month(.abbreviated).day())
-                        .font(Theme.ui(11, .semibold))
-                        .textCase(.uppercase)
-                        .kerning(0.9)
-                        .foregroundStyle(Theme.inkTertiary)
+                    SectionLabel(text: JournalDayHeader.title(for: group.day, now: appNow))
                         .padding(.top, 18)
                         .padding(.bottom, 2)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -243,9 +241,9 @@ struct JournalView: View {
                             .listRowSeparator(.hidden)
                             // Rows default to the system control
                             // background — white, and jarring against the
-                            // paper ground every other surface uses.
+                            // sidebar tone of this pane.
                             .listRowBackground(
-                                RoundedRectangle(cornerRadius: Theme.radiusSmall)
+                                RoundedRectangle(cornerRadius: Theme.radiusMedium)
                                     .fill(selectedID == entry.id ? Theme.accentSoft : .clear)
                             )
                             .contextMenu {
@@ -272,7 +270,7 @@ struct JournalView: View {
                                 ? "No entries in this date range."
                                 : "No entries in this discipline yet."
                     )
-                    .background(Theme.background)
+                    .background(Theme.sidebar)
                 }
             }
     }
@@ -330,22 +328,7 @@ struct JournalView: View {
             }
             .pickerStyle(.inline)
         } label: {
-            Image(systemName: typeFilter == nil
-                ? "line.3.horizontal.decrease"
-                : "line.3.horizontal.decrease.circle.fill")
-                .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(typeFilter == nil ? Theme.inkSecondary : Theme.accent)
-                .frame(width: 34, height: 34)
-                .background(
-                    typeFilter == nil ? Theme.surface : Theme.accentSoft,
-                    in: .rect(cornerRadius: Theme.radiusSmall)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: Theme.radiusSmall)
-                        .strokeBorder(typeFilter == nil ? Theme.divider : .clear, lineWidth: 1)
-                )
-                .contentShape(.rect)
-                .hoverHighlight()
+            IconCapsuleLabel(systemImage: "line.3.horizontal.decrease", active: typeFilter != nil)
         }
         .buttonStyle(.plain)
         .menuStyle(.button)
@@ -360,20 +343,7 @@ struct JournalView: View {
         return Button {
             showDatePopover.toggle()
         } label: {
-            Image(systemName: "calendar")
-                .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(active ? Theme.accent : Theme.inkSecondary)
-                .frame(width: 34, height: 34)
-                .background(
-                    active ? Theme.accentSoft : Theme.surface,
-                    in: .rect(cornerRadius: Theme.radiusSmall)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: Theme.radiusSmall)
-                        .strokeBorder(active ? .clear : Theme.divider, lineWidth: 1)
-                )
-                .contentShape(.rect)
-                .hoverHighlight()
+            IconCapsuleLabel(systemImage: "calendar", active: active)
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Filter by date")
@@ -475,6 +445,29 @@ struct JournalView: View {
 
 }
 
+/// The day group title: "Today", "Yesterday", or the weekday and date. A
+/// day outside the current year also shows the year.
+enum JournalDayHeader {
+    static func title(
+        for day: Date,
+        now: Date,
+        calendar: Calendar = .autoupdatingCurrent,
+        locale: Locale = .autoupdatingCurrent
+    ) -> String {
+        if calendar.isDate(day, inSameDayAs: now) { return "Today" }
+        if let yesterday = calendar.date(byAdding: .day, value: -1, to: calendar.startOfDay(for: now)),
+           calendar.isDate(day, inSameDayAs: yesterday) {
+            return "Yesterday"
+        }
+        var style = Date.FormatStyle(locale: locale, calendar: calendar, timeZone: calendar.timeZone)
+            .weekday(.wide).month(.wide).day()
+        if !calendar.isDate(day, equalTo: now, toGranularity: .year) {
+            style = style.year()
+        }
+        return day.formatted(style)
+    }
+}
+
 /// A journal row reads top-down — what discipline, what was asked, what
 /// came back — rather than left-to-right across a tag column. At 380 pt
 /// wide there isn't room for both a tag gutter and a legible headline.
@@ -486,6 +479,7 @@ struct JournalRow: View {
             HStack(spacing: 8) {
                 Tag(text: entry.exercise.title)
                 if entry.isDaily { Badge(text: "Daily") }
+                Spacer(minLength: 0)
                 if entry.voiceNoteFile != nil {
                     Image(systemName: "waveform")
                         .font(.system(size: 10))
@@ -502,17 +496,17 @@ struct JournalRow: View {
                 }
             }
             Text(entry.promptHeadline)
-                .font(Theme.ui(14, .medium))
+                .font(Theme.display(15))
                 .foregroundStyle(Theme.ink)
                 .lineLimit(1)
             if !entry.responseText.isEmpty {
                 Text(entry.responseText)
-                    .font(Theme.ui(12))
-                    .foregroundStyle(Theme.inkTertiary)
+                    .font(Theme.ui(12.5))
+                    .foregroundStyle(Theme.inkSecondary)
                     .lineLimit(1)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.vertical, 7)
+        .padding(.vertical, 8)
     }
 }

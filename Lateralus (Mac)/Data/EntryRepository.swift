@@ -7,6 +7,8 @@ import SwiftData
 struct EntryRepository {
     let context: ModelContext
     let attachments: AttachmentStore
+    /// Writes pending edits to the store. Tests replace it to force a failure.
+    var commitChanges: (ModelContext) throws -> Void = { try $0.save() }
 
     init(context: ModelContext, attachments: AttachmentStore = .live) {
         self.context = context
@@ -44,6 +46,22 @@ struct EntryRepository {
         return entry
     }
 
+    /// Replaces the response text of a saved entry. The date and the
+    /// attachments stay, so an edit never counts as new activity. If the
+    /// save fails, the entry keeps its original text.
+    func updateResponseText(of entry: JournalEntry, to newText: String) throws {
+        let trimmed = newText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { throw EntryRepositoryError.emptyResponse }
+        let original = entry.responseText
+        entry.responseText = trimmed
+        do {
+            try commitChanges(context)
+        } catch {
+            entry.responseText = original
+            throw error
+        }
+    }
+
     func delete(_ entry: JournalEntry) throws {
         let file = entry.voiceNoteFile
         context.delete(entry)
@@ -70,5 +88,15 @@ struct EntryRepository {
             try context.save()
         }
         attachments.sweepOrphans(referencedFiles: referenced)
+    }
+}
+
+enum EntryRepositoryError: LocalizedError {
+    case emptyResponse
+
+    var errorDescription: String? {
+        switch self {
+        case .emptyResponse: "A response can’t be empty."
+        }
     }
 }

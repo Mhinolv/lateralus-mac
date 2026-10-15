@@ -1,0 +1,43 @@
+name: CI
+# Two jobs with fixed check names (the job id is the check name):
+#   build-and-test (macOS)  builds the app and runs the unit tests (UI tests stay local).
+#   ci-gate        (ubuntu) the required merge check; passes only when build-and-test passed.
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, ready_for_review, synchronize]
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build-and-test:
+    runs-on: macos-26
+    timeout-minutes: 30
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and run unit tests
+        run: |
+          set -o pipefail
+          xcodebuild -project "Lateralus (Mac).xcodeproj" -scheme "Lateralus (Mac)" \
+            -configuration Debug -destination platform=macOS -derivedDataPath build/DerivedData \
+            CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= \
+            -only-testing "Lateralus (Mac)Tests" test 2>&1 | tee xcodebuild.log | grep -E "Test case|error:|\*\* (BUILD|TEST)"
+  ci-gate:
+    needs: build-and-test
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require build-and-test success
+        env:
+          RESULT: ${{ needs.build-and-test.result }}
+        run: |
+          echo "build-and-test: $RESULT" >> "$GITHUB_STEP_SUMMARY"
+          [ "$RESULT" = success ]

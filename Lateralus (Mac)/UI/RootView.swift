@@ -33,11 +33,20 @@ struct RootView: View {
             // so it should settle calmly rather than overshoot.
             .animation(reduceMotion ? nil : .spring(response: 0.4, dampingFraction: 1.0), value: appModel.isSidebarVisible)
         }
+        .overlay {
+            // The window that runs the restore shows its own sheet instead.
+            if appModel.restoreStatus.isBusy && !appModel.ownsArchiveRestore {
+                ArchiveRestoreScrim(status: appModel.restoreStatus)
+            }
+        }
         .frame(minWidth: 900, minHeight: 620)
         .environment(appModel)
         .focusedSceneValue(\.appModel, appModel)
         .environment(\.appNow, appNow)
         .task {
+            // A restore copies voice notes before their rows exist. A window
+            // opened then must not sweep them as orphans.
+            guard !appModel.restoreStatus.isBusy else { return }
             try? EntryRepository(context: modelContext).reconcileAttachments()
         }
         .onReceive(NotificationCenter.default.publisher(for: .NSCalendarDayChanged)) { _ in
@@ -94,6 +103,67 @@ struct RootView: View {
         } message: { result in
             Text(result.message)
         }
+        .onChange(of: appModel.pendingArchiveRestore) { _, pending in
+            guard pending else { return }
+            appModel.pendingArchiveRestore = false
+            // Leave the menu action before the panel runs its modal loop.
+            Task { await restoreArchive() }
+        }
+        .sheet(isPresented: Binding(
+            get: { appModel.ownsArchiveRestore && appModel.restoreStatus.isBusy },
+            set: { _ in }
+        )) {
+            ArchiveRestoreSheet(status: appModel.restoreStatus)
+                .interactiveDismissDisabled()
+        }
+        .alert(
+            Text(appModel.archiveRestorePlan?.confirmTitle ?? ""),
+            isPresented: Binding(
+                get: { appModel.archiveRestorePlan != nil },
+                set: { if !$0 { appModel.archiveRestorePlan = nil } }
+            ),
+            presenting: appModel.archiveRestorePlan
+        ) { plan in
+            Button("Restore") {
+                Task {
+                    await appModel.restoreArchive(plan, repository: EntryRepository(context: modelContext))
+                }
+            }
+            .keyboardShortcut(.defaultAction)
+            Button("Cancel", role: .cancel) {}
+        } message: { plan in
+            Text(plan.confirmMessage)
+        }
+        .alert(
+            Text(appModel.archiveRestoreResult?.title ?? ""),
+            isPresented: Binding(
+                get: { appModel.archiveRestoreResult != nil },
+                set: { if !$0 { appModel.archiveRestoreResult = nil } }
+            ),
+            presenting: appModel.archiveRestoreResult
+        ) { _ in
+            Button("OK") {}
+                .keyboardShortcut(.defaultAction)
+        } message: { result in
+            Text(result.message)
+        }
+    }
+
+    private func restoreArchive() async {
+        guard appModel.canRestoreArchive else { return }
+        let panel = NSOpenPanel()
+        let delegate = ArchiveOpenPanelDelegate()
+        panel.delegate = delegate
+        panel.title = "Restore Archive"
+        panel.prompt = "Restore"
+        panel.canChooseFiles = true
+        // A team build's archive type may not be registered, so Finder
+        // treats the package as a folder. Folders must stay choosable.
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        let response = withExtendedLifetime(delegate) { panel.runModal() }
+        guard response == .OK, let url = panel.url else { return }
+        await appModel.checkArchive(at: url)
     }
 
     private func exportArchive() async {

@@ -299,12 +299,23 @@ struct JournalView: View {
             title: "No entries yet",
             message: "Finish a challenge or write a diary entry — every idea stays on this Mac."
         ) {
-            Button {
-                appModel.showDiaryComposer = true
-            } label: {
-                PrimaryActionButtonLabel(title: "New Diary Entry")
+            HStack(spacing: 12) {
+                Button {
+                    appModel.showDiaryComposer = true
+                } label: {
+                    PrimaryActionButtonLabel(title: "New Diary Entry")
+                }
+                .buttonStyle(.plain)
+                .disabled(appModel.restoreStatus.isBusy)
+
+                Button {
+                    appModel.pendingArchiveRestore = true
+                } label: {
+                    SecondaryActionButtonLabel(title: "Restore Archive…", systemImage: "arrow.down.doc")
+                }
+                .buttonStyle(.plain)
+                .disabled(!appModel.canRestoreArchive)
             }
-            .buttonStyle(.plain)
         }
     }
 

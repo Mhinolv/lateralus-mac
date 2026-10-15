@@ -1,9 +1,10 @@
 import AppKit
+import CoreText
 import SwiftUI
 
 /// The "Night Shift" look: a blue-black night desk and a lime highlighter
 /// in dark mode, warm paper with an olive accent in light mode. A serif
-/// display voice sits against a humanist grotesque interface voice.
+/// display voice sits against a grotesque interface voice.
 ///
 /// Every color is a light/dark pair that follows the system appearance.
 /// There are no per-discipline hues: where one item must be singled out,
@@ -99,48 +100,128 @@ enum Theme {
 
     // MARK: - Type
 
-    /// Display type — Source Serif 4. Used for the wordmark, screen
-    /// headlines, prompts, and entry recaps: everything that is *writing*
-    /// rather than *interface*.
+    /// Display type — Fraunces. Used for the wordmark, screen headlines,
+    /// prompts, and entry recaps: everything that is *writing* rather than
+    /// *interface*. Above 28 pt it takes the 144 pt optical cut.
     static func display(_ size: CGFloat, weight: DisplayWeight = .semibold, italic: Bool = false) -> Font {
-        guard Fonts.areAvailable else {
-            let system = Font.system(size: size, weight: weight == .semibold ? .semibold : .regular, design: .serif)
-            return italic ? system.italic() : system
+        cachedFont(.display(size, weight, italic)) {
+            guard let font = displayFont(size, weight: weight, italic: italic) else {
+                let system = Font.system(size: size, weight: weight.systemWeight, design: .serif)
+                return italic ? system.italic() : system
+            }
+            return Font(font)
         }
-        let name = switch (weight, italic) {
-        case (.semibold, false): Fonts.Serif.semibold
-        case (.semibold, true): Fonts.Serif.semiboldItalic
-        case (.regular, false): Fonts.Serif.regular
-        case (.regular, true): Fonts.Serif.italic
-        }
-        return .custom(name, fixedSize: size)
     }
 
-    /// Source Serif has no static medium master; prompts sit at `.regular`
-    /// and titles at `.semibold`.
-    enum DisplayWeight { case regular, semibold }
+    /// Fraunces at the given size and weight, or `nil` if the face did not
+    /// load. `SOFT` and `WONK` stay at 0 for a crisp, regular cut.
+    static func displayFont(_ size: CGFloat, weight: DisplayWeight = .semibold, italic: Bool = false) -> CTFont? {
+        Fonts.font(italic ? .frauncesItalic : .fraunces, size: size, axes: [
+            .weight: weight.rawValue,
+            .opticalSize: Fonts.frauncesOpticalSize(for: size),
+            .soft: 0,
+            .wonky: 0,
+        ])
+    }
 
-    /// Interface type — Work Sans. Labels, controls, body copy, everything
-    /// that isn't a headline.
+    /// Display weights. `.light` is for the large Today and Insights
+    /// headlines, prompts sit at `.regular`, and titles at `.semibold`.
+    enum DisplayWeight: CGFloat {
+        case light = 300
+        case regular = 400
+        case semibold = 600
+
+        var systemWeight: Font.Weight {
+            switch self {
+            case .light: .light
+            case .regular: .regular
+            case .semibold: .semibold
+            }
+        }
+    }
+
+    /// Interface type — Bricolage Grotesque. Labels, controls, body copy,
+    /// everything that isn't a headline.
     static func ui(_ size: CGFloat, _ weight: Font.Weight = .regular, italic: Bool = false) -> Font {
-        guard Fonts.areAvailable else {
-            let system = Font.system(size: size, weight: weight)
-            return italic ? system.italic() : system
+        cachedFont(.ui(size, weight, italic)) {
+            guard let font = uiFont(size, weight, italic: italic) else {
+                let system = Font.system(size: size, weight: weight)
+                return italic ? system.italic() : system
+            }
+            return Font(font)
         }
-        if italic { return .custom(Fonts.Sans.italic, fixedSize: size) }
-        let name = switch weight {
-        case .bold, .heavy, .black: Fonts.Sans.bold
-        case .semibold: Fonts.Sans.semibold
-        case .medium: Fonts.Sans.medium
-        default: Fonts.Sans.regular
+    }
+
+    /// Bricolage at the given size and weight, or `nil` if the face did not
+    /// load. Bricolage has no italic, so italic interface text is Fraunces
+    /// Italic at the regular weight.
+    static func uiFont(_ size: CGFloat, _ weight: Font.Weight = .regular, italic: Bool = false) -> CTFont? {
+        if italic {
+            return Fonts.font(.frauncesItalic, size: size, axes: [
+                .weight: DisplayWeight.regular.rawValue,
+                .opticalSize: Fonts.frauncesOpticalSize(for: size),
+                .soft: 0,
+                .wonky: 0,
+            ])
         }
-        return .custom(name, fixedSize: size)
+        return Fonts.font(.bricolage, size: size, axes: [
+            .weight: uiWeight(weight),
+            .opticalSize: Fonts.bricolageOpticalSize(for: size),
+            .width: 100,
+        ])
+    }
+
+    /// Bricolage `wght` for a SwiftUI weight: 400, 500, 600, or 700.
+    static func uiWeight(_ weight: Font.Weight) -> CGFloat {
+        switch weight {
+        case .bold, .heavy, .black: 700
+        case .semibold: 600
+        case .medium: 500
+        default: 400
+        }
     }
 
     /// Anything counted or compared — streaks, totals, word counts, error
-    /// detail. Kept on the system monospace face so digits stay even.
+    /// detail. JetBrains Mono, so digits stay even.
     static func mono(_ size: CGFloat, _ weight: Font.Weight = .semibold) -> Font {
-        .system(size: size, weight: weight, design: .monospaced)
+        cachedFont(.mono(size, weight)) {
+            guard let font = monoFont(size, weight) else {
+                return .system(size: size, weight: weight, design: .monospaced)
+            }
+            return Font(font)
+        }
+    }
+
+    /// JetBrains Mono at the given size and weight, or `nil` if the face
+    /// did not load.
+    static func monoFont(_ size: CGFloat, _ weight: Font.Weight = .semibold) -> CTFont? {
+        Fonts.font(.jetBrainsMono, size: size, axes: [.weight: monoWeight(weight)])
+    }
+
+    /// JetBrains Mono `wght` for a SwiftUI weight: 400, or 600 for
+    /// semibold and heavier.
+    static func monoWeight(_ weight: Font.Weight) -> CGFloat {
+        switch weight {
+        case .semibold, .bold, .heavy, .black: 600
+        default: 400
+        }
+    }
+
+    /// Accessors run in view bodies, so each size, weight, and style builds
+    /// its Core Text font once.
+    private enum FontKey: Hashable {
+        case display(CGFloat, DisplayWeight, Bool)
+        case ui(CGFloat, Font.Weight, Bool)
+        case mono(CGFloat, Font.Weight)
+    }
+
+    private static var fontCache: [FontKey: Font] = [:]
+
+    private static func cachedFont(_ key: FontKey, make: () -> Font) -> Font {
+        if let font = fontCache[key] { return font }
+        let font = make()
+        fontCache[key] = font
+        return font
     }
 }
 

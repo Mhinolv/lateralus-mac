@@ -24,7 +24,7 @@ No account, no analytics, no network, no AI. Everything is stored locally (Swift
 | `Data/` | `JournalEntry` (versioned SwiftData schema), `PersistenceController` (recovery-first startup), `AttachmentStore` + `EntryRepository` (transactional attachment handling) |
 | `Media/` | `Sketch` model + canvas + renderer, `VoiceNoteRecorder`/`Player` |
 | `UI/` | `RootView` (split view + unsaved-work navigation guard), Today, Session, Journal, Entry detail, Insights, Diary, Theme, Fonts |
-| `Resources/Fonts/` | Source Serif 4 and Work Sans (OFL, licenses included) |
+| `Resources/Fonts/` | Fraunces, Bricolage Grotesque and JetBrains Mono variable fonts (OFL, licenses included) |
 
 **Schedule stability is a product contract.** The daily schedule is a pure function of (local day, `PromptEngine.contentVersion`). Any change to `ContentPools` or engine mixing must ship with a `contentVersion` bump; `testScheduleStabilityPin` fails if the published schedule drifts silently.
 
@@ -54,7 +54,7 @@ Rules the system holds itself to:
 - **Three radii and a pill** — 8 / 14 / 22 / capsule. Inputs and rows take the small step, controls and tiles the medium, cards and sheets the large. Buttons are capsules.
 - **Ink at four opacities** carries the entire text hierarchy. Hairlines are ink at 11% (6% between text blocks).
 - **Shadows are never ink.** Light mode uses `#111318`. Dark mode uses black, because dark-mode ink is light and would glow.
-- **Type is bundled, not borrowed.** Source Serif 4 for writing (wordmark, headlines, prompts, entry recaps), Work Sans for interface, system monospace for anything counted. `UI/Fonts.swift` registers the faces into the process at first use and `Theme.display`/`Theme.ui` fall back to system faces if that ever fails, so a repackaged bundle degrades quietly.
+- **Type is bundled, not borrowed.** Fraunces for writing (wordmark, headlines, prompts, entry recaps), Bricolage Grotesque for interface, JetBrains Mono for anything counted. All three are variable fonts. `UI/Fonts.swift` registers them at first use and sets weight and optical size on the axes (Fraunces uses its 144 pt cut above 28 pt). Bricolage has no italic, so `Theme.ui(italic: true)` uses Fraunces Italic. Each family falls back to its system face on its own if it fails to load.
 
 ## Building and testing
 

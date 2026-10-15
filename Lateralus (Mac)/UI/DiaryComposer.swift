@@ -11,6 +11,7 @@ struct DiaryComposer: View {
     @State private var recorder = VoiceNoteRecorder()
     @State private var player = VoiceNotePlayer()
     @State private var sketch = Sketch()
+    @State private var sketchHistory = SketchHistory()
     @State private var showCanvas = false
     @State private var saved = false
     @State private var saveErrorMessage = ""
@@ -73,7 +74,7 @@ struct DiaryComposer: View {
                 )
 
                 if showCanvas {
-                    SketchCanvas(sketch: $sketch, tint: Exercise.diary.tint)
+                    SketchCanvas(sketch: $sketch, history: $sketchHistory, tint: Exercise.diary.tint)
                 }
             }
             .padding(24)

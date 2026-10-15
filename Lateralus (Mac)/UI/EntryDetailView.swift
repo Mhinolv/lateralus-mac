@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// The reading pane: one saved entry in full.
 struct EntryDetailView: View {
@@ -10,6 +11,13 @@ struct EntryDetailView: View {
     let onDelete: () -> Void
 
     @State private var player = VoiceNotePlayer()
+    @State private var exportError: String?
+
+    /// The saved sketch, when it has strokes to export.
+    private var exportableSketch: Sketch? {
+        guard let data = entry.sketchData, let sketch = Sketch.decode(data), !sketch.isEmpty else { return nil }
+        return sketch
+    }
 
     var body: some View {
         ScrollView {
@@ -36,6 +44,14 @@ struct EntryDetailView: View {
                 }
                 if let data = entry.sketchData {
                     SketchImage(data: data)
+                        .contextMenu {
+                            if let sketch = exportableSketch {
+                                Button("Export Sketch…") {
+                                    // Leave the menu action before the panel runs its modal loop.
+                                    Task { exportSketch(sketch) }
+                                }
+                            }
+                        }
                 }
             }
             .padding(.horizontal, 40)
@@ -45,6 +61,31 @@ struct EntryDetailView: View {
         }
         .onDisappear { player.stop() }
         .onChange(of: entry.id) { player.stop() }
+        .alert(
+            "Couldn’t Export Sketch",
+            isPresented: Binding(get: { exportError != nil }, set: { if !$0 { exportError = nil } })
+        ) {
+            Button("OK") {}
+                .keyboardShortcut(.defaultAction)
+        } message: {
+            Text(exportError ?? "")
+        }
+    }
+
+    /// Asks for a destination and writes the sketch there as a PNG. Cancel
+    /// does nothing, success shows nothing, and the entry never changes.
+    private func exportSketch(_ sketch: Sketch) {
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.png]
+        panel.canCreateDirectories = true
+        panel.nameFieldStringValue = SketchExport.defaultFileName(for: entry.date)
+        panel.prompt = "Export"
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do {
+            try SketchExport.write(sketch, to: url)
+        } catch {
+            exportError = error.localizedDescription
+        }
     }
 
     private var header: some View {
@@ -71,6 +112,23 @@ struct EntryDetailView: View {
                 .accessibilityIdentifier("detail-edit")
                 .accessibilityLabel("Edit Response")
                 .help("Edit the response text")
+            }
+
+            if let sketch = exportableSketch {
+                Button {
+                    exportSketch(sketch)
+                } label: {
+                    Image(systemName: "square.and.arrow.up")
+                        .font(.system(size: 13))
+                        .foregroundStyle(Theme.inkTertiary)
+                        .frame(width: 30, height: 30)
+                        .contentShape(.rect)
+                        .hoverHighlight()
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("detail-export-sketch")
+                .accessibilityLabel("Export Sketch")
+                .help("Export the sketch as a PNG image")
             }
 
             Button {

@@ -49,6 +49,14 @@ struct LateralusCommands: Commands {
                 openWindow(id: "main")
             }
             .keyboardShortcut("n", modifiers: [.command, .shift])
+
+            Divider()
+
+            // No shortcut: ⌘E is the system "Use Selection for Find".
+            Button("Export Archive…") {
+                appModel?.pendingArchiveExport = true
+            }
+            .disabled(!(appModel?.canExportArchive ?? false))
         }
         CommandGroup(after: .pasteboard) {
             Button("Find in Journal") {

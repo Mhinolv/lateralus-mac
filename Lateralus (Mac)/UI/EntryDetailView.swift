@@ -3,6 +3,10 @@ import SwiftUI
 /// The reading pane: one saved entry in full.
 struct EntryDetailView: View {
     let entry: JournalEntry
+    /// The open edit of the response text, or nil in read mode. The journal
+    /// owns it so selection changes can guard unsaved changes.
+    @Binding var edit: ResponseEdit?
+    let onSaveEdit: () -> Void
     let onDelete: () -> Void
 
     @State private var player = VoiceNotePlayer()
@@ -12,7 +16,13 @@ struct EntryDetailView: View {
             VStack(alignment: .leading, spacing: 24) {
                 header
                 promptCard
-                if !entry.responseText.isEmpty {
+                if let editBinding = Binding($edit) {
+                    EntryTextEditor(
+                        edit: editBinding,
+                        onCancel: { edit = nil },
+                        onSave: onSaveEdit
+                    )
+                } else if !entry.responseText.isEmpty {
                     Text(entry.responseText)
                         .font(Theme.ui(16))
                         .lineSpacing(6)
@@ -46,6 +56,23 @@ struct EntryDetailView: View {
                 .foregroundStyle(Theme.inkTertiary)
             Spacer(minLength: 12)
 
+            if edit == nil && !entry.responseText.isEmpty {
+                Button {
+                    edit = ResponseEdit(original: entry.responseText)
+                } label: {
+                    Image(systemName: "square.and.pencil")
+                        .font(.system(size: 13))
+                        .foregroundStyle(Theme.inkTertiary)
+                        .frame(width: 30, height: 30)
+                        .contentShape(.rect)
+                        .hoverHighlight()
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("detail-edit")
+                .accessibilityLabel("Edit Response")
+                .help("Edit the response text")
+            }
+
             Button {
                 onDelete()
             } label: {
@@ -57,6 +84,7 @@ struct EntryDetailView: View {
                     .hoverHighlight()
             }
             .buttonStyle(.plain)
+            .disabled(edit != nil)
             .accessibilityIdentifier("detail-delete")
             .accessibilityLabel("Delete Entry")
             .help("Delete this entry")

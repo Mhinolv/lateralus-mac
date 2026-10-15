@@ -235,9 +235,9 @@ struct SessionView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    /// The hero prompt. The `Highlight` marks of #24 apply here.
+    /// The hero prompt, with its dealt fragment on the `Highlight` mark.
     private var headline: some View {
-        Text(prompt.headline)
+        Text(Highlight.attributed(prompt.headline, marking: prompt.markedPhrase))
             .font(Theme.display(isCommonThread ? 44 : 38, weight: .regular))
             .kerning(-0.5)
             .lineSpacing(2)

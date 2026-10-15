@@ -44,10 +44,10 @@ struct SideBar: View {
             } label: {
                 Text("New Diary Entry")
                     .font(Theme.ui(14, .semibold))
-                    .foregroundStyle(Theme.onAccent)
+                    .foregroundStyle(Theme.primaryLabel)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
-                    .background(Theme.accent, in: .rect(cornerRadius: Theme.radiusMedium))
+                    .background(Theme.primaryFill, in: .rect(cornerRadius: Theme.radiusMedium))
                     .contentShape(.rect)
                     .hoverHighlight(cornerRadius: Theme.radiusMedium)
             }
@@ -62,7 +62,7 @@ struct SideBar: View {
         .frame(width: 264)
         .frame(maxHeight: .infinity, alignment: .top)
         .background {
-            Theme.surface
+            Theme.sidebar
                 .gesture(WindowDragGesture())
         }
         .overlay(alignment: .trailing) {

@@ -1,27 +1,32 @@
+import AppKit
 import SwiftUI
 
-/// The "Paper" look: a warm unbleached ground, one terracotta accent, a
-/// serif display voice against a humanist grotesque interface voice, and
-/// softly rounded edges throughout.
+/// The "Night Shift" look: a blue-black night desk and a lime highlighter
+/// in dark mode, warm paper with an olive accent in light mode. A serif
+/// display voice sits against a humanist grotesque interface voice.
 ///
-/// The system reads as a notebook rather than a dashboard — which is what
-/// the product is. Everything commits to a single fixed light appearance,
-/// and there are no per-discipline hues: where one item must be singled
-/// out, it takes the accent and everything else stays ink.
+/// Every color is a light/dark pair that follows the system appearance.
+/// There are no per-discipline hues: where one item must be singled out,
+/// it takes the accent and everything else stays ink. Lime is only a fill
+/// in light mode, never text — light accent text is olive.
 enum Theme {
 
     // MARK: - Ground
 
-    /// The window ground — warm off-white, never pure paper.
-    static let background = Color(red: 0.973, green: 0.949, blue: 0.910)  // #f8f2e8
-    /// Cards, the sidebar, inputs, and any surface that lifts off the ground.
-    static let surface = Color(red: 0.945, green: 0.914, blue: 0.863)     // #f1e9dc
-    /// The deepest paper step — chart tracks, monogram tiles, disabled fills.
-    static let surfaceSunken = Color(red: 0.918, green: 0.878, blue: 0.808) // #eae0ce
+    /// The window ground.
+    static let background = adaptive(0xF5F3EC, 0x111318)
+    /// Cards, inputs, and any surface that lifts off the ground.
+    static let surface = adaptive(0xFFFFFF, 0x191C23)
+    /// The deepest step — chart tracks, monogram tiles, disabled fills.
+    static let surfaceSunken = adaptive(0xECE9DF, 0x222630)
+    /// The sidebar column, a step outside the ground.
+    static let sidebar = adaptive(0xEDEAE1, 0x0C0E12)
+    /// The sheet the sketch canvas and viewer draw on.
+    static let sketchPaper = adaptive(0xFFFFFF, 0x1B1F27)
 
     // MARK: - Ink
 
-    static let ink = Color(red: 0.169, green: 0.141, blue: 0.098)         // #2b2419
+    static let ink = adaptive(0x111318, 0xF2EFE7)
     static let inkSecondary = ink.opacity(0.68)
     static let inkTertiary = ink.opacity(0.42)
     /// The faintest legible ink — de-emphasized chart bars, hint text.
@@ -29,20 +34,26 @@ enum Theme {
 
     // MARK: - Accent
 
-    /// The app's one hue. `accentStrong` is the ~700 step (kickers, large
-    /// numbers, text on soft washes); `accentSoft` is the ~100 step.
-    static let accent = Color(red: 0.710, green: 0.314, blue: 0.180)      // #b5502e
-    static let accentStrong = Color(red: 0.478, green: 0.227, blue: 0.122) // #7a3a1f
-    static let accentSoft = Color(red: 0.941, green: 0.863, blue: 0.788)  // #f0dcc9
-    static let onAccent = Color.white
+    /// The app's one hue. `accentStrong` is the text step for kickers,
+    /// large numbers, and text on soft washes; `accentSoft` is the wash.
+    static let accent = adaptive(0x4A6300, 0xD4F25A)
+    static let accentStrong = adaptive(0x3F5600, 0xD4F25A)
+    static let accentSoft = adaptive(0xE9F7B0, 0xD4F25A, darkAlpha: 0.14)
+    /// The highlighter fill, and the text that sits on it.
+    static let mark = adaptive(0xDDF57A, 0xD4F25A)
+    static let onMark = adaptive(0x111318, 0x111318)
+    /// The primary action: an ink pill with a lime label in light mode, a
+    /// lime pill with an ink label in dark mode.
+    static let primaryFill = adaptive(0x111318, 0xD4F25A)
+    static let primaryLabel = adaptive(0xDDF57A, 0x111318)
 
     // MARK: - Strokes
 
     /// The standard hairline — card borders, input wells, list separators.
-    static let divider = ink.opacity(0.12)
+    static let divider = ink.opacity(0.11)
     /// A quieter rule, for dividing text from text rather than surface from
     /// surface.
-    static let dividerSoft = ink.opacity(0.07)
+    static let dividerSoft = ink.opacity(0.06)
     /// Covers a window that must not take input, such as during a restore.
     static let scrim = background.opacity(0.88)
     static let hoverFill = ink.opacity(0.05)
@@ -52,13 +63,39 @@ enum Theme {
 
     /// Three steps, plus `Capsule` for anything fully rounded. Inputs and
     /// rows take `small`, controls and tiles take `medium`, cards and sheets
-    /// take `large`.
-    static let radiusSmall: CGFloat = 6
-    static let radiusMedium: CGFloat = 10
-    static let radiusLarge: CGFloat = 16
+    /// take `large`. Buttons are capsules.
+    static let radiusSmall: CGFloat = 8
+    static let radiusMedium: CGFloat = 14
+    static let radiusLarge: CGFloat = 22
 
     /// The default corner for anything that doesn't say otherwise.
     static let radius: CGFloat = radiusMedium
+
+    // MARK: - Appearance
+
+    /// A color that resolves to `light` or `dark` (sRGB hex) from the
+    /// appearance it is drawn in, so the app follows the system setting.
+    static func adaptive(
+        _ light: UInt32, _ dark: UInt32,
+        lightAlpha: CGFloat = 1, darkAlpha: CGFloat = 1
+    ) -> Color {
+        Color(nsColor: NSColor(name: nil) { appearance in
+            isDark(appearance) ? srgb(dark, alpha: darkAlpha) : srgb(light, alpha: lightAlpha)
+        })
+    }
+
+    static func isDark(_ appearance: NSAppearance) -> Bool {
+        appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+    }
+
+    private static func srgb(_ hex: UInt32, alpha: CGFloat) -> NSColor {
+        NSColor(
+            srgbRed: CGFloat((hex >> 16) & 0xFF) / 255,
+            green: CGFloat((hex >> 8) & 0xFF) / 255,
+            blue: CGFloat(hex & 0xFF) / 255,
+            alpha: alpha
+        )
+    }
 
     // MARK: - Type
 
@@ -115,16 +152,16 @@ struct AppBackground: View {
     }
 }
 
-/// Elevation steps. The ramp is warm-tinted rather than neutral so shadows
-/// read as paper lifting off paper, not as a grey drop.
+/// Elevation steps. Light mode casts ink-colored shadows, so surfaces read
+/// as paper lifting off paper. Dark mode casts neutral black: an ink-tinted
+/// shadow would glow, because dark-mode ink is light.
 enum Elevation {
     case none, sm, md, lg
 }
 
 extension View {
-    /// Raised, borderless surface. `elevation` adds a warm ink-tinted
-    /// shadow; most cards want `.sm`, hero panels want `.md`, and `.lg` is
-    /// reserved for sheets and popovers floating over a scrim.
+    /// Raised, borderless surface. `elevation` adds a shadow; most cards
+    /// want `.sm`, hero panels want `.md`, and `.lg` is reserved for sheets and popovers floating over a scrim.
     func paperCard(cornerRadius: CGFloat = Theme.radiusMedium, elevation: Elevation = .none) -> some View {
         background(Theme.surface, in: .rect(cornerRadius: cornerRadius))
             .modifier(ElevationModifier(elevation: elevation))
@@ -162,15 +199,21 @@ private struct ElevationModifier: ViewModifier {
             content
         case .sm:
             content
-                .shadow(color: Theme.ink.opacity(0.06), radius: 1, x: 0, y: 1)
-                .shadow(color: Theme.ink.opacity(0.08), radius: 10, x: 0, y: 4)
+                .shadow(color: Self.shadow(0.06, dark: 0.30), radius: 1, x: 0, y: 1)
+                .shadow(color: Self.shadow(0.08, dark: 0.35), radius: 10, x: 0, y: 4)
         case .md:
             content
-                .shadow(color: Theme.ink.opacity(0.07), radius: 2, x: 0, y: 1)
-                .shadow(color: Theme.ink.opacity(0.10), radius: 18, x: 0, y: 8)
+                .shadow(color: Self.shadow(0.07, dark: 0.35), radius: 2, x: 0, y: 1)
+                .shadow(color: Self.shadow(0.10, dark: 0.45), radius: 18, x: 0, y: 8)
         case .lg:
-            content.shadow(color: Theme.ink.opacity(0.18), radius: 28, x: 0, y: 16)
+            content.shadow(color: Self.shadow(0.18, dark: 0.55), radius: 28, x: 0, y: 16)
         }
+    }
+
+    /// Light-mode ink at `light` opacity, dark-mode black at `dark`. Never
+    /// `Theme.ink`, which is light in dark mode.
+    static func shadow(_ light: CGFloat, dark: CGFloat) -> Color {
+        Theme.adaptive(0x111318, 0x000000, lightAlpha: light, darkAlpha: dark)
     }
 }
 
@@ -290,7 +333,8 @@ extension View {
     }
 }
 
-/// The system's primary action: solid accent, white text, medium corner.
+/// The system's primary action: a `primaryFill` capsule with a
+/// `primaryLabel` title.
 struct PrimaryActionButtonLabel: View {
     let title: String
     var enabled: Bool = true
@@ -301,20 +345,16 @@ struct PrimaryActionButtonLabel: View {
             .font(Theme.ui(15, .semibold))
             // Disabled still has to be readable — it names the action you'd
             // get, and this is the only button on the card.
-            .foregroundStyle(enabled ? Theme.onAccent : Theme.inkSecondary)
+            .foregroundStyle(enabled ? Theme.primaryLabel : Theme.inkSecondary)
             .frame(maxWidth: fullWidth ? .infinity : nil)
             .padding(.horizontal, fullWidth ? 0 : 22)
             .padding(.vertical, 12)
-            .background(
-                enabled ? AnyShapeStyle(Theme.accent) : AnyShapeStyle(Theme.surfaceSunken),
-                in: .rect(cornerRadius: Theme.radiusMedium)
-            )
+            .background(enabled ? Theme.primaryFill : Theme.surfaceSunken, in: .capsule)
             .overlay(
-                RoundedRectangle(cornerRadius: Theme.radiusMedium)
-                    .strokeBorder(enabled ? .clear : Theme.divider, lineWidth: 1)
+                Capsule().strokeBorder(enabled ? .clear : Theme.divider, lineWidth: 1)
             )
-            .contentShape(.rect)
-            .hoverHighlight(cornerRadius: Theme.radiusMedium)
+            .contentShape(.capsule)
+            .hoverHighlight(in: Capsule())
     }
 }
 
@@ -353,7 +393,7 @@ struct EmptyStateView<Actions: View>: View {
     }
 }
 
-/// The system's secondary action: ground fill, hairline, ink text.
+/// The system's secondary action: a surface capsule, hairline, ink text.
 struct SecondaryActionButtonLabel: View {
     let title: String
     var systemImage: String?
@@ -371,12 +411,11 @@ struct SecondaryActionButtonLabel: View {
         .frame(maxWidth: fullWidth ? .infinity : nil)
         .padding(.horizontal, fullWidth ? 0 : 16)
         .padding(.vertical, 10)
-        .background(Theme.background, in: .rect(cornerRadius: Theme.radiusMedium))
+        .background(Theme.surface, in: .capsule)
         .overlay(
-            RoundedRectangle(cornerRadius: Theme.radiusMedium)
-                .strokeBorder(Theme.divider, lineWidth: 1)
+            Capsule().strokeBorder(Theme.divider, lineWidth: 1)
         )
-        .contentShape(.rect)
-        .hoverHighlight(cornerRadius: Theme.radiusMedium)
+        .contentShape(.capsule)
+        .hoverHighlight(in: Capsule())
     }
 }

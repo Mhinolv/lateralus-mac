@@ -117,10 +117,10 @@ struct TodayView: View {
 
                 Text(dailyDone ? "Answer Again" : "Begin")
                     .font(Theme.ui(15, .semibold))
-                    .foregroundStyle(Theme.onAccent)
+                    .foregroundStyle(Theme.primaryLabel)
                     .padding(.horizontal, 22)
                     .padding(.vertical, 11)
-                    .background(Theme.accent, in: .rect(cornerRadius: Theme.radiusMedium))
+                    .background(Theme.primaryFill, in: .rect(cornerRadius: Theme.radiusMedium))
                     .padding(.top, 22)
             }
             .padding(32)

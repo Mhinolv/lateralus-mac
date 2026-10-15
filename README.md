@@ -30,25 +30,31 @@ No account, no analytics, no network, no AI. Everything is stored locally (Swift
 
 ## Visual system
 
-Warm paper, one terracotta accent, a serif display voice against a humanist grotesque interface voice, softly rounded edges. Everything lives in `UI/Theme.swift` — palette, radii, elevation, and the shared components (kicker, tag, badge, streak pill, discipline monogram, primary/secondary buttons, empty state). Nothing outside `Theme` should hard-code a color or a corner.
+Night Shift: a blue-black night desk with a lime highlighter in dark mode, warm paper with an olive accent in light mode. The app follows the system light or dark setting. Everything lives in `UI/Theme.swift` — palette, radii, elevation, and the shared components (kicker, tag, badge, streak pill, discipline monogram, primary/secondary buttons, empty state). Nothing outside `Theme` should hard-code a color or a corner.
 
-| Token | Value | Role |
-|---|---|---|
-| `background` | `#F8F2E8` | Window ground, input wells |
-| `surface` | `#F1E9DC` | Cards, sidebar |
-| `surfaceSunken` | `#EAE0CE` | Chart tracks, monogram tiles, disabled fills |
-| `ink` | `#2B2419` | Text — also at 68% / 42% / 24% |
-| `accent` | `#B5502E` | The app's one hue |
-| `accentStrong` | `#7A3A1F` | Text on accent washes |
-| `accentSoft` | `#F0DCC9` | Selection, washes, the streak pill |
+| Token | Light | Dark | Role |
+|---|---|---|---|
+| `background` | `#F5F3EC` | `#111318` | Window ground, input wells |
+| `surface` | `#FFFFFF` | `#191C23` | Cards, secondary buttons |
+| `surfaceSunken` | `#ECE9DF` | `#222630` | Chart tracks, monogram tiles, disabled fills |
+| `sidebar` | `#EDEAE1` | `#0C0E12` | Sidebar column |
+| `ink` | `#111318` | `#F2EFE7` | Text — also at 68% / 42% / 24% |
+| `accent` | `#4A6300` | `#D4F25A` | The app's one hue |
+| `accentStrong` | `#3F5600` | `#D4F25A` | Text on accent washes |
+| `accentSoft` | `#E9F7B0` | `#D4F25A` at 14% | Selection, washes, the streak pill |
+| `mark` / `onMark` | `#DDF57A` / `#111318` | `#D4F25A` / `#111318` | Highlighter fill and its text |
+| `primaryFill` / `primaryLabel` | `#111318` / `#DDF57A` | `#D4F25A` / `#111318` | Primary action capsule and its label |
+| `sketchPaper` | `#FFFFFF` | `#1B1F27` | Sketch canvas and viewer |
 
 Rules the system holds itself to:
 
 - **One hue.** No per-discipline colors. Where one item must be singled out (Insights' balance chart), it contrasts accent against faint ink rather than introducing a second color.
-- **Three radii and a pill** — 6 / 10 / 16 / capsule. Inputs and rows take the small step, controls and tiles the medium, cards and sheets the large.
-- **Ink at four opacities** carries the entire text hierarchy. Hairlines are ink at 12% (7% between text blocks).
+- **Every color is a light/dark pair.** Build tokens with `Theme.adaptive` (`NSColor(name:dynamicProvider:)`). Do not force a color scheme and do not add an appearance menu.
+- **Lime is never text in light mode.** In light mode, lime is only a fill behind ink. Light accent text is `#4A6300`.
+- **Three radii and a pill** — 8 / 14 / 22 / capsule. Inputs and rows take the small step, controls and tiles the medium, cards and sheets the large. Buttons are capsules.
+- **Ink at four opacities** carries the entire text hierarchy. Hairlines are ink at 11% (6% between text blocks).
+- **Shadows are never ink.** Light mode uses `#111318`. Dark mode uses black, because dark-mode ink is light and would glow.
 - **Type is bundled, not borrowed.** Source Serif 4 for writing (wordmark, headlines, prompts, entry recaps), Work Sans for interface, system monospace for anything counted. `UI/Fonts.swift` registers the faces into the process at first use and `Theme.display`/`Theme.ui` fall back to system faces if that ever fails, so a repackaged bundle degrades quietly.
-- **Still light-only.** The window forces light appearance and the palette has no dark tokens — a from-scratch job, not an inversion.
 
 ## Building and testing
 

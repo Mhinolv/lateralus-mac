@@ -16,6 +16,9 @@ final class PersistenceController {
 
     private let inMemory: Bool
 
+    /// Nonisolated for the same reason as `AppModel.deinit` (#17).
+    nonisolated deinit {}
+
     func load() {
         do {
             let configuration = ModelConfiguration(

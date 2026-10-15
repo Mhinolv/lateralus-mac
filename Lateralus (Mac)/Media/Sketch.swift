@@ -64,15 +64,20 @@ enum SketchPen: CaseIterable, Identifiable {
 }
 
 /// An editable drawing surface: light paper, pen palette, three nib sizes,
-/// a stroke eraser, undo, and clear. Pointer-driven — mouse or trackpad.
+/// a stroke eraser, undo, redo, and clear. Pointer-driven — mouse or
+/// trackpad. ⌘Z and ⇧⌘Z apply only while the canvas has focus.
 struct SketchCanvas: View {
     @Binding var sketch: Sketch
+    @Binding var history: SketchHistory
     let tint: Color
 
     @State private var pen: SketchPen = .ink
     @State private var nib: Double = 3
     @State private var erasing = false
     @State private var activeStroke: Sketch.Stroke?
+    /// The strokes before the current erase drag, so one drag is one undo step.
+    @State private var eraseBaseline: [Sketch.Stroke]?
+    @FocusState private var canvasFocused: Bool
 
     private let nibSizes: [Double] = [1.5, 3, 7]
 
@@ -139,20 +144,27 @@ struct SketchCanvas: View {
             Spacer()
 
             Button {
-                if !sketch.strokes.isEmpty {
-                    sketch.strokes.removeLast()
-                }
+                history.undo(&sketch)
             } label: {
-                Image(systemName: "arrow.uturn.backward")
+                Label("Undo", systemImage: "arrow.uturn.backward")
             }
             .buttonStyle(.borderless)
-            .disabled(sketch.strokes.isEmpty)
-            .keyboardShortcut("z", modifiers: [.command, .shift])
-            .accessibilityLabel("Undo last stroke")
-            .help("Undo last stroke")
+            .disabled(!history.canUndo)
+            .keyboardShortcut(canvasFocused ? KeyboardShortcut("z", modifiers: .command) : nil)
+            .help("Undo (⌘Z)")
+
+            Button {
+                history.redo(&sketch)
+            } label: {
+                Label("Redo", systemImage: "arrow.uturn.forward")
+            }
+            .buttonStyle(.borderless)
+            .disabled(!history.canRedo)
+            .keyboardShortcut(canvasFocused ? KeyboardShortcut("z", modifiers: [.command, .shift]) : nil)
+            .help("Redo (⇧⌘Z)")
 
             Button("Clear") {
-                sketch.strokes.removeAll()
+                history.clear(&sketch)
             }
             .buttonStyle(.borderless)
             .disabled(sketch.strokes.isEmpty)
@@ -181,9 +193,15 @@ struct SketchCanvas: View {
         .clipShape(.rect(cornerRadius: Theme.radiusSmall))
         .overlay(
             RoundedRectangle(cornerRadius: Theme.radiusSmall)
-                .strokeBorder(Theme.divider, lineWidth: 1)
+                .strokeBorder(
+                    canvasFocused ? Theme.accent : Theme.divider,
+                    lineWidth: canvasFocused ? 1.5 : 1
+                )
         )
         .frame(minHeight: 260)
+        .focusable()
+        .focused($canvasFocused)
+        .focusEffectDisabled()
         .gesture(drawGesture)
         .accessibilityLabel("Drawing canvas")
     }
@@ -191,8 +209,14 @@ struct SketchCanvas: View {
     private var drawGesture: some Gesture {
         DragGesture(minimumDistance: 0)
             .onChanged { value in
+                if !canvasFocused {
+                    canvasFocused = true
+                }
                 let point = Sketch.Point(x: value.location.x, y: value.location.y)
                 if erasing {
+                    if eraseBaseline == nil {
+                        eraseBaseline = sketch.strokes
+                    }
                     erase(at: value.location)
                 } else if activeStroke == nil {
                     let rgb = pen.components
@@ -205,8 +229,12 @@ struct SketchCanvas: View {
             }
             .onEnded { _ in
                 if let finished = activeStroke {
-                    sketch.strokes.append(finished)
+                    history.addStroke(finished, to: &sketch)
                     activeStroke = nil
+                }
+                if let baseline = eraseBaseline {
+                    history.recordErase(before: baseline, after: sketch.strokes)
+                    eraseBaseline = nil
                 }
             }
     }

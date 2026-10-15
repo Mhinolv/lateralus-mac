@@ -23,6 +23,7 @@ struct SessionView: View {
     @State private var recorder = VoiceNoteRecorder()
     @State private var player = VoiceNotePlayer()
     @State private var sketch = Sketch()
+    @State private var sketchHistory = SketchHistory()
     @State private var showCanvas = false
     @State private var savedEntry: JournalEntry?
     @State private var saveErrorMessage = ""
@@ -300,7 +301,7 @@ struct SessionView: View {
             )
 
             if showCanvas {
-                SketchCanvas(sketch: $sketch, tint: exercise.tint)
+                SketchCanvas(sketch: $sketch, history: $sketchHistory, tint: exercise.tint)
             }
 
             Button {
@@ -424,6 +425,7 @@ struct SessionView: View {
             )
             recorder.markCommitted()
             appModel.sessionHasUnsavedWork = false
+            sketchHistory.reset()
             withAnimation(reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 1.0)) { savedEntry = entry }
         } catch {
             saveErrorMessage = error.localizedDescription
@@ -441,6 +443,7 @@ struct SessionView: View {
             connectingWord = ""
             sketch = Sketch()
             showCanvas = false
+            sketchHistory.reset()
         }
     }
 

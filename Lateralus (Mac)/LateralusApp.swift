@@ -22,7 +22,7 @@ struct LateralusApp: App {
         }
         .defaultSize(width: 1120, height: 720)
         .windowResizability(.contentMinSize)
-        .windowStyle(.hiddenTitleBar)
+        .windowToolbarStyle(.unified)
         .commands {
             LateralusCommands()
         }
@@ -119,7 +119,6 @@ private struct RecoveryView: View {
     var body: some View {
         ZStack {
             AppBackground()
-                .gesture(WindowDragGesture())
             VStack(spacing: 0) {
                 // A ring, not a warning triangle. The store failing to open
                 // is a recoverable hiccup, and the screen's whole job is to

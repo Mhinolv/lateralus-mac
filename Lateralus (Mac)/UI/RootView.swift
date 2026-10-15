@@ -18,16 +18,6 @@ struct RootView: View {
                 }
                 detail
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .safeAreaInset(edge: .top, spacing: 0) {
-                        if !appModel.isSidebarVisible {
-                            // The sidebar's background is the only window-drag
-                            // surface (hidden title bar); replace it while collapsed.
-                            Color.clear
-                                .frame(height: 36)
-                                .contentShape(.rect)
-                                .gesture(WindowDragGesture())
-                        }
-                    }
             }
             // Critically damped (no bounce) — this is a reposition, not a flick,
             // so it should settle calmly rather than overshoot.
@@ -40,6 +30,8 @@ struct RootView: View {
             }
         }
         .frame(minWidth: 900, minHeight: 620)
+        .toolbar { toolbarItems }
+        .toolbarBackground(Theme.background, for: .windowToolbar)
         .environment(appModel)
         .focusedSceneValue(\.appModel, appModel)
         .environment(\.appNow, appNow)
@@ -179,6 +171,33 @@ struct RootView: View {
         await appModel.exportArchive(entries, into: folder)
     }
 
+    /// Sidebar toggle first, New Diary Entry always last. Screen items go
+    /// between them. System buttons give hover, press and disabled states.
+    @ToolbarContentBuilder
+    private var toolbarItems: some ToolbarContent {
+        ToolbarItem(placement: .navigation) {
+            Button {
+                appModel.toggleSidebar()
+            } label: {
+                Label(appModel.isSidebarVisible ? "Hide Sidebar" : "Show Sidebar", systemImage: "sidebar.left")
+            }
+            .help("Show or hide the sidebar (⌃⌘S)")
+            .accessibilityIdentifier("toolbar-sidebar")
+        }
+        ToolbarItem(placement: .primaryAction) {
+            Button {
+                appModel.showDiaryComposer = true
+            } label: {
+                Label("New Diary Entry", systemImage: "square.and.pencil")
+                    .labelStyle(.iconOnly)
+            }
+            .help("New diary entry (⌘N)")
+            .accessibilityIdentifier("toolbar-diary")
+            .disabled(appModel.restoreStatus.isBusy)
+        }
+    }
+
+    /// Today sets its own title because a daily session replaces it in place.
     @ViewBuilder
     private var detail: some View {
         switch appModel.selection {
@@ -186,10 +205,13 @@ struct RootView: View {
             TodayView()
         case .journal:
             JournalView()
+                .navigationTitle(SidebarItem.journal.title)
         case .insights:
             InsightsView()
+                .navigationTitle(SidebarItem.insights.title)
         case .practice(let exercise):
             PracticeContainer(exercise: exercise)
+                .navigationTitle(SidebarItem.practice(exercise).title)
         }
     }
 }

@@ -10,6 +10,8 @@ struct JournalView: View {
 
     @State private var searchText = ""
     @State private var typeFilter: Exercise?
+    @State private var dateRange = JournalDateRange()
+    @State private var showDatePopover = false
     @State private var selectedID: UUID?
     @State private var entryPendingDeletion: JournalEntry?
     @State private var persistenceErrorMessage = ""
@@ -26,6 +28,7 @@ struct JournalView: View {
     private var filtered: [JournalEntry] {
         entries.filter { entry in
             if let typeFilter, entry.exercise != typeFilter { return false }
+            if !dateRange.contains(entry.date) { return false }
             guard !searchText.isEmpty else { return true }
             return entry.responseText.localizedCaseInsensitiveContains(searchText)
                 || entry.promptHeadline.localizedCaseInsensitiveContains(searchText)
@@ -139,6 +142,18 @@ struct JournalView: View {
     /// Inline search and filter controls in the app's style — this pane's
     /// chrome, not the window's.
     private var controlsHeader: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            searchRow
+            if let summary = dateRange.summary() {
+                dateRangeSummary(summary)
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 24)
+        .padding(.bottom, 12)
+    }
+
+    private var searchRow: some View {
         HStack(spacing: 10) {
             HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass")
@@ -167,10 +182,27 @@ struct JournalView: View {
             .inputWell(fill: Theme.surface)
 
             filterMenu
+            dateFilterButton
         }
-        .padding(.horizontal, 20)
-        .padding(.top, 24)
-        .padding(.bottom, 12)
+    }
+
+    /// The active date range, with a button that clears the dates only.
+    private func dateRangeSummary(_ summary: String) -> some View {
+        HStack(spacing: 6) {
+            Text(summary)
+                .font(Theme.ui(12))
+                .foregroundStyle(Theme.inkTertiary)
+            Button {
+                dateRange.clear()
+            } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.system(size: 12))
+                    .foregroundStyle(Theme.inkTertiary)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Clear Dates")
+            .help("Clear Dates")
+        }
     }
 
     @ViewBuilder
@@ -234,9 +266,11 @@ struct JournalView: View {
                 if filtered.isEmpty {
                     EmptyStateView(
                         title: "Nothing matches",
-                        message: searchText.isEmpty
-                            ? "No entries in this discipline yet."
-                            : "No entry mentions “\(searchText)”."
+                        message: !searchText.isEmpty
+                            ? "No entry mentions “\(searchText)”."
+                            : dateRange.isActive
+                                ? "No entries in this date range."
+                                : "No entries in this discipline yet."
                     )
                     .background(Theme.background)
                 }
@@ -308,6 +342,80 @@ struct JournalView: View {
         .fixedSize()
         .accessibilityLabel("Filter by exercise")
         .help("Filter by exercise")
+    }
+
+    private var dateFilterButton: some View {
+        let active = dateRange.isActive
+        return Button {
+            showDatePopover.toggle()
+        } label: {
+            Image(systemName: "calendar")
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(active ? Theme.accent : Theme.inkSecondary)
+                .frame(width: 34, height: 34)
+                .background(
+                    active ? Theme.accentSoft : Theme.surface,
+                    in: .rect(cornerRadius: Theme.radiusSmall)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: Theme.radiusSmall)
+                        .strokeBorder(active ? .clear : Theme.divider, lineWidth: 1)
+                )
+                .contentShape(.rect)
+                .hoverHighlight()
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Filter by date")
+        .help("Filter by date")
+        .popover(isPresented: $showDatePopover, arrowEdge: .bottom) {
+            dateFilterPopover
+        }
+    }
+
+    /// From / To checkboxes with date pickers. A checkbox turned on starts
+    /// at today, and a picker stays disabled while its checkbox is off.
+    private var dateFilterPopover: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            dateBoundRow(
+                "From",
+                date: dateRange.from,
+                set: { dateRange.setFrom($0) }
+            )
+            dateBoundRow(
+                "To",
+                date: dateRange.to,
+                set: { dateRange.setTo($0) }
+            )
+            Button("Clear Dates") {
+                dateRange.clear()
+            }
+            .buttonStyle(.plain)
+            .font(Theme.ui(13, .medium))
+            .foregroundStyle(Theme.accent)
+            .disabled(!dateRange.isActive)
+            .opacity(dateRange.isActive ? 1 : 0.5)
+        }
+        .padding(16)
+        .frame(width: 260, alignment: .leading)
+    }
+
+    private func dateBoundRow(_ title: String, date: Date?, set: @escaping (Date?) -> Void) -> some View {
+        HStack {
+            Toggle(title, isOn: Binding(
+                get: { date != nil },
+                set: { set($0 ? .now : nil) }
+            ))
+            .toggleStyle(.checkbox)
+            Spacer()
+            DatePicker(
+                title,
+                selection: Binding(get: { date ?? .now }, set: { set($0) }),
+                displayedComponents: .date
+            )
+            .datePickerStyle(.field)
+            .labelsHidden()
+            .disabled(date == nil)
+        }
     }
 
     // MARK: - Mutations

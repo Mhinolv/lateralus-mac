@@ -190,10 +190,13 @@ struct EntryDetailView: View {
                 .padding(.leading, 6)
                 .padding(.trailing, 16)
                 .padding(.vertical, 5)
-                .background(Theme.surface, in: .capsule)
-                .overlay(Capsule().strokeBorder(Theme.divider, lineWidth: 1))
-                .contentShape(.capsule)
-                .hoverHighlight(in: Capsule())
+                .background(Theme.surface, in: .rect(cornerRadius: Theme.radiusMedium))
+                .overlay(
+                    RoundedRectangle(cornerRadius: Theme.radiusMedium)
+                        .strokeBorder(Theme.divider, lineWidth: 1)
+                )
+                .contentShape(.rect(cornerRadius: Theme.radiusMedium))
+                .hoverHighlight(cornerRadius: Theme.radiusMedium)
             }
             .buttonStyle(.plain)
             .accessibilityLabel(player.isPlaying ? "Pause voice note" : "Play voice note")

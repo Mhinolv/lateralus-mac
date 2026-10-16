@@ -243,7 +243,7 @@ struct DiaryComposer: View {
             Button("Restore") { restore(draft) }
                 .buttonStyle(.plain)
                 .font(Theme.ui(13.5, .semibold))
-                .foregroundStyle(Theme.accent)
+                .foregroundStyle(Theme.accentText)
         }
         .padding(.vertical, 12)
         .padding(.horizontal, 16)

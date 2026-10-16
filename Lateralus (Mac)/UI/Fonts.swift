@@ -1,14 +1,14 @@
 import CoreText
 import SwiftUI
 
-/// The app's three bundled variable faces, registered into the process at
-/// first use.
+/// The app's bundled variable faces, registered into the process at first
+/// use.
 ///
 /// Lateralus ships its own typography rather than leaning on the system
-/// face: Fraunces for anything that reads as *writing* (the wordmark,
-/// headlines, prompts), Bricolage Grotesque for anything that reads as
-/// *interface* (labels, controls), and JetBrains Mono for anything counted.
-/// All are OFL — licenses ship alongside the faces in `Resources/Fonts`.
+/// face: Source Serif 4 for anything that reads as *writing* (the wordmark,
+/// headlines, prompts) and Work Sans for anything that reads as *interface*
+/// (labels, controls). Counts use the system monospace. Both faces are
+/// OFL — licenses ship alongside the faces in `Resources/Fonts`.
 ///
 /// Every face is a variable font. Weights and optical sizes are set on the
 /// variation axes directly, never through named instances, so a font file
@@ -20,22 +20,21 @@ enum Fonts {
     /// One bundled font file. Each family is checked on its own: if one
     /// file is missing or fails to load, only its accessor falls back.
     enum Family: CaseIterable {
-        /// Fraunces — display voice.
-        case fraunces
-        /// Fraunces Italic — display italics and `Theme.ui(italic: true)`,
-        /// because Bricolage has no italic.
-        case frauncesItalic
-        /// Bricolage Grotesque — interface voice.
-        case bricolage
-        /// JetBrains Mono — counts, totals, error detail.
-        case jetBrainsMono
+        /// Source Serif 4 — display voice.
+        case sourceSerif
+        /// Source Serif 4 Italic — display italics and the wordmark.
+        case sourceSerifItalic
+        /// Work Sans — interface voice.
+        case workSans
+        /// Work Sans Italic — `Theme.ui(italic: true)`.
+        case workSansItalic
 
         var fileName: String {
             switch self {
-            case .fraunces: "Fraunces[SOFT,WONK,opsz,wght]"
-            case .frauncesItalic: "Fraunces-Italic[SOFT,WONK,opsz,wght]"
-            case .bricolage: "BricolageGrotesque[opsz,wdth,wght]"
-            case .jetBrainsMono: "JetBrainsMono[wght]"
+            case .sourceSerif: "SourceSerif4[opsz,wght]"
+            case .sourceSerifItalic: "SourceSerif4-Italic[opsz,wght]"
+            case .workSans: "WorkSans[wght]"
+            case .workSansItalic: "WorkSans-Italic[wght]"
             }
         }
     }
@@ -44,9 +43,6 @@ enum Fonts {
     enum Axis: String {
         case weight = "wght"
         case opticalSize = "opsz"
-        case width = "wdth"
-        case soft = "SOFT"
-        case wonky = "WONK"
 
         /// The four-byte tag as Core Text's numeric axis identifier.
         var identifier: UInt32 {
@@ -54,16 +50,11 @@ enum Fonts {
         }
     }
 
-    /// Fraunces switches to its sharp, high-contrast 144 pt cut for large
-    /// type. Below that it tracks the point size, down to the axis minimum.
-    static func frauncesOpticalSize(for size: CGFloat) -> CGFloat {
-        size > 28 ? 144 : max(9, size)
-    }
-
-    /// Bricolage tracks the point size inside its 12–96 axis range, so
-    /// small interface text gets the wider, open low-opsz cut.
-    static func bricolageOpticalSize(for size: CGFloat) -> CGFloat {
-        min(max(size, 12), 96)
+    /// Source Serif 4 tracks the point size inside its 8–60 axis range, so
+    /// small text gets the sturdy caption cut and headlines the fine
+    /// display cut.
+    static func sourceSerifOpticalSize(for size: CGFloat) -> CGFloat {
+        min(max(size, 8), 60)
     }
 
     /// `true` if `family` loaded and can build fonts.

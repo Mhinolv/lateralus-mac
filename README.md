@@ -24,37 +24,39 @@ No account, no analytics, no network, no AI. Everything is stored locally (Swift
 | `Data/` | `JournalEntry` (versioned SwiftData schema), `PersistenceController` (recovery-first startup), `AttachmentStore` + `EntryRepository` (transactional attachment handling) |
 | `Media/` | `Sketch` model + canvas + renderer, `VoiceNoteRecorder`/`Player` |
 | `UI/` | `RootView` (split view + unsaved-work navigation guard), Today, Session, Journal, Entry detail, Insights, Diary, Theme, Fonts |
-| `Resources/Fonts/` | Fraunces, Bricolage Grotesque and JetBrains Mono variable fonts (OFL, licenses included) |
+| `Resources/Fonts/` | Source Serif 4 and Work Sans variable fonts (OFL, licenses included) |
 
 **Schedule stability is a product contract.** The daily schedule is a pure function of (local day, `PromptEngine.contentVersion`). Any change to `ContentPools` or engine mixing must ship with a `contentVersion` bump; `testScheduleStabilityPin` fails if the published schedule drifts silently.
 
 ## Visual system
 
-Night Shift: a blue-black night desk with a lime highlighter in dark mode, warm paper with an olive accent in light mode. The app follows the system light or dark setting. Everything lives in `UI/Theme.swift` — palette, radii, elevation, and the shared components (kicker, tag, badge, streak pill, discipline monogram, primary/secondary buttons, empty state). Nothing outside `Theme` should hard-code a color or a corner.
+Lamplight: warm parchment with a terracotta accent in light mode, a lamp-lit brown desk with a coral accent in dark mode. The app follows the system light or dark setting. Everything lives in `UI/Theme.swift`: palette, radii, elevation, and the shared components (kicker, tag, badge, discipline monogram, primary and secondary buttons, empty state). Nothing outside `Theme` hard-codes a color or a corner.
 
 | Token | Light | Dark | Role |
 |---|---|---|---|
-| `background` | `#F5F3EC` | `#111318` | Window ground, input wells |
-| `surface` | `#FFFFFF` | `#191C23` | Cards, secondary buttons |
-| `surfaceSunken` | `#ECE9DF` | `#222630` | Chart tracks, monogram tiles, disabled fills |
-| `sidebar` | `#EDEAE1` | `#0C0E12` | Sidebar column |
-| `ink` | `#111318` | `#F2EFE7` | Text — also at 68% / 42% / 24% |
-| `accent` | `#4A6300` | `#D4F25A` | The app's one hue |
-| `accentStrong` | `#3F5600` | `#D4F25A` | Text on accent washes |
-| `accentSoft` | `#E9F7B0` | `#D4F25A` at 14% | Selection, washes, the streak pill |
-| `mark` / `onMark` | `#DDF57A` / `#111318` | `#D4F25A` / `#111318` | Highlighter fill and its text |
-| `primaryFill` / `primaryLabel` | `#111318` / `#DDF57A` | `#D4F25A` / `#111318` | Primary action capsule and its label |
-| `sketchPaper` | `#FFFFFF` | `#1B1F27` | Sketch canvas and viewer |
+| `background` | `#F8F2E8` | `#1C1813` | Window ground, input wells |
+| `surface` | `#F1E9DC` | `#26201A` | Cards, secondary buttons |
+| `surfaceSunken` | `#EAE0CE` | `#30281F` | Search field, chart tracks, monogram tiles, disabled fills |
+| `sidebar` | `#EFE6D7` | `#211C16` | Sidebar column |
+| `ink` | `#2B2419` | `#EFE6D6` | Text. Also at 68% / 45% (dark 70% / 46%) and 24% |
+| `accent` | `#B5502E` | `#E07A52` | The app's one hue |
+| `accentStrong` | `#7A3A1F` | `#F2A585` | Text on accent washes |
+| `accentSoft` | `#F0DCC9` | `#3D271B` | Selection and washes |
+| `accentText` | `#7A3A1F` | `#E07A52` | Accent-colored text, such as `Tag` |
+| `mark` / `onMark` | `#F0DCC9` / `#7A3A1F` | `#3D271B` / `#F2A585` | Prompt highlight fill and its text |
+| `primaryFill` / `primaryLabel` | `#B5502E` / `#FFFFFF` | `#E07A52` / `#1C1813` | Primary action and its label |
+| `sketchPaper` | `#FDF9F1` | `#E8DDC9` | Sketch canvas and viewer |
 
 Rules the system holds itself to:
 
-- **One hue.** No per-discipline colors. Where one item must be singled out (Insights' balance chart), it contrasts accent against faint ink rather than introducing a second color.
+- **One hue.** No per-discipline colors. If one item must stand out (Insights' balance chart), it uses the accent against faint ink.
 - **Every color is a light/dark pair.** Build tokens with `Theme.adaptive` (`NSColor(name:dynamicProvider:)`). Do not force a color scheme and do not add an appearance menu.
-- **Lime is never text in light mode.** In light mode, lime is only a fill behind ink. Light accent text is `#4A6300`.
-- **Three radii and a pill** — 8 / 14 / 22 / capsule. Inputs and rows take the small step, controls and tiles the medium, cards and sheets the large. Buttons are capsules.
-- **Ink at four opacities** carries the entire text hierarchy. Hairlines are ink at 11% (6% between text blocks).
-- **Shadows are never ink.** Light mode uses `#111318`. Dark mode uses black, because dark-mode ink is light and would glow.
-- **Type is bundled, not borrowed.** Fraunces for writing (wordmark, headlines, prompts, entry recaps), Bricolage Grotesque for interface, JetBrains Mono for anything counted. All three are variable fonts. `UI/Fonts.swift` registers them at first use and sets weight and optical size on the axes (Fraunces uses its 144 pt cut above 28 pt). Bricolage has no italic, so `Theme.ui(italic: true)` uses Fraunces Italic. Each family falls back to its system face on its own if it fails to load.
+- **Text meets 4.5:1.** Light `accent` is about 4.2:1 on `surface`, so accent-colored text uses `accentText`. `ThemeTests` checks the text pairs.
+- **Three radii** — 6 / 10 / 16. Inputs, rows, icon controls and monogram tiles take the small step. Buttons, the search field and panes take the medium step. Cards and sheets take the large step. Only `Badge` is a capsule.
+- **Ink at four opacities** carries the text hierarchy. Hairlines are ink at 12% (7% between text blocks).
+- **Shadows are never ink.** Light mode uses the literal `#2B2419`. Dark mode uses black, because dark-mode ink is light and would glow.
+- **The sketch paper stays light.** In dark mode the paper is `#E8DDC9`, so pens draw their saved colors in both appearances.
+- **Type is bundled, not borrowed.** Source Serif 4 for writing (wordmark, headlines, prompts, entry recaps), Work Sans for interface, the system monospace for counts and error detail. Both bundled faces are variable fonts. `UI/Fonts.swift` registers them at first use and sets weight and optical size on the axes. The Source Serif optical size follows the point size (8–60). `Theme.ui(italic: true)` uses Work Sans Italic. Each family falls back to its system face if it fails to load.
 
 ## Building and testing
 

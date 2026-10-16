@@ -32,7 +32,7 @@ Lateralus (Mac) is a native macOS app for practice in lateral thinking. It gives
 - **Schedule stability is a contract.** The daily schedule is a pure function of (local day, `PromptEngine.contentVersion`). If you change `ContentPools` or engine mixing, bump `contentVersion`. `testScheduleStabilityPin` must pass.
 - **Saved data must still load.** If you change `JournalEntry`, add a new schema version and a migration. Entries saved before the change must still open.
 - **Attachments are transactional.** Save files and the entry together through `EntryRepository`. Do not leave orphan files.
-- **Theme only.** Take every color, radius and shared component from `UI/Theme.swift`. Use one hue. Every color is a light/dark pair, and the app follows the system appearance. Do not force a color scheme. In light mode, do not use lime as text color. Do not tint a shadow with `ink`.
+- **Theme only.** Take every color, radius and shared component from `UI/Theme.swift`. Use one hue. The look is Lamplight. Every color is a light/dark pair, and the app follows the system appearance. Do not force a color scheme. Text must meet 4.5:1 contrast: use `accentText` for accent-colored text, not `accent`. Do not tint a shadow with `ink`.
 - **Favorites are deferred.** Keep the `isFavorite` column. Do not add Favorites UI without an issue.
 - SwiftUI previews: use `PreviewProvider`, not the `#Preview` macro.
 

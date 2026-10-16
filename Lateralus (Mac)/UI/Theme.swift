@@ -2,34 +2,35 @@ import AppKit
 import CoreText
 import SwiftUI
 
-/// The "Night Shift" look: a blue-black night desk and a lime highlighter
-/// in dark mode, warm paper with an olive accent in light mode. A serif
-/// display voice sits against a grotesque interface voice.
+/// The "Lamplight" look: warm parchment with a terracotta accent in light
+/// mode, a lamp-lit brown desk with a coral accent in dark mode. A serif
+/// display voice sits against a plain sans interface voice.
 ///
 /// Every color is a light/dark pair that follows the system appearance.
 /// There are no per-discipline hues: where one item must be singled out,
-/// it takes the accent and everything else stays ink. Lime is only a fill
-/// in light mode, never text — light accent text is olive.
+/// it takes the accent and everything else stays ink. All text meets
+/// 4.5:1, so accent-colored text uses `accentText`.
 enum Theme {
 
     // MARK: - Ground
 
     /// The window ground.
-    static let background = adaptive(0xF5F3EC, 0x111318)
+    static let background = adaptive(0xF8F2E8, 0x1C1813)
     /// Cards, inputs, and any surface that lifts off the ground.
-    static let surface = adaptive(0xFFFFFF, 0x191C23)
-    /// The deepest step — search fields, disabled fills.
-    static let surfaceSunken = adaptive(0xECE9DF, 0x222630)
+    static let surface = adaptive(0xF1E9DC, 0x26201A)
+    /// The deepest step — search fields, disabled fills, monogram tiles.
+    static let surfaceSunken = adaptive(0xEAE0CE, 0x30281F)
     /// The sidebar column, a step outside the ground.
-    static let sidebar = adaptive(0xEDEAE1, 0x0C0E12)
-    /// The sheet the sketch canvas and viewer draw on.
-    static let sketchPaper = adaptive(0xFFFFFF, 0x1B1F27)
+    static let sidebar = adaptive(0xEFE6D7, 0x211C16)
+    /// The sheet the sketch canvas and viewer draw on. It stays light in
+    /// dark mode, so pens draw their saved colors in both appearances.
+    static let sketchPaper = adaptive(0xFDF9F1, 0xE8DDC9)
 
     // MARK: - Ink
 
-    static let ink = adaptive(0x111318, 0xF2EFE7)
-    static let inkSecondary = ink.opacity(0.68)
-    static let inkTertiary = ink.opacity(0.42)
+    static let ink = adaptive(0x2B2419, 0xEFE6D6)
+    static let inkSecondary = adaptive(0x2B2419, 0xEFE6D6, lightAlpha: 0.68, darkAlpha: 0.70)
+    static let inkTertiary = adaptive(0x2B2419, 0xEFE6D6, lightAlpha: 0.45, darkAlpha: 0.46)
     /// The faintest legible ink — de-emphasized chart bars, hint text.
     static let inkQuaternary = ink.opacity(0.24)
 
@@ -37,24 +38,28 @@ enum Theme {
 
     /// The app's one hue. `accentStrong` is the text step for kickers,
     /// large numbers, and text on soft washes; `accentSoft` is the wash.
-    static let accent = adaptive(0x4A6300, 0xD4F25A)
-    static let accentStrong = adaptive(0x3F5600, 0xD4F25A)
-    static let accentSoft = adaptive(0xE9F7B0, 0xD4F25A, darkAlpha: 0.14)
-    /// The highlighter fill, and the text that sits on it.
-    static let mark = adaptive(0xDDF57A, 0xD4F25A)
-    static let onMark = adaptive(0x111318, 0x111318)
-    /// The primary action: an ink pill with a lime label in light mode, a
-    /// lime pill with an ink label in dark mode.
-    static let primaryFill = adaptive(0x111318, 0xD4F25A)
-    static let primaryLabel = adaptive(0xDDF57A, 0x111318)
+    static let accent = adaptive(0xB5502E, 0xE07A52)
+    static let accentStrong = adaptive(0x7A3A1F, 0xF2A585)
+    static let accentSoft = adaptive(0xF0DCC9, 0x3D271B)
+    /// Accent-colored text on the ground or a surface. Light `accent` is
+    /// about 4.2:1 on `surface`, so light mode takes `accentStrong`.
+    static let accentText = adaptive(0x7A3A1F, 0xE07A52)
+    /// The selection highlight behind the dealt prompt phrase, and the text
+    /// that sits on it.
+    static let mark = accentSoft
+    static let onMark = accentStrong
+    /// The primary action: a solid terracotta fill with a white label in
+    /// light mode, a coral fill with a ground-colored label in dark mode.
+    static let primaryFill = accent
+    static let primaryLabel = adaptive(0xFFFFFF, 0x1C1813)
 
     // MARK: - Strokes
 
     /// The standard hairline — card borders, input wells, list separators.
-    static let divider = ink.opacity(0.11)
+    static let divider = ink.opacity(0.12)
     /// A quieter rule, for dividing text from text rather than surface from
     /// surface.
-    static let dividerSoft = ink.opacity(0.06)
+    static let dividerSoft = ink.opacity(0.07)
     /// Covers a window that must not take input, such as during a restore.
     static let scrim = background.opacity(0.88)
     static let hoverFill = ink.opacity(0.05)
@@ -62,12 +67,12 @@ enum Theme {
 
     // MARK: - Radii
 
-    /// Three steps, plus `Capsule` for anything fully rounded. Inputs and
-    /// rows take `small`, controls and tiles take `medium`, cards and sheets
-    /// take `large`. Buttons are capsules.
-    static let radiusSmall: CGFloat = 8
-    static let radiusMedium: CGFloat = 14
-    static let radiusLarge: CGFloat = 22
+    /// Three steps. Inputs, rows, and icon controls take `small`, buttons,
+    /// controls, and tiles take `medium`, cards and sheets take `large`.
+    /// Only `Badge` is a capsule.
+    static let radiusSmall: CGFloat = 6
+    static let radiusMedium: CGFloat = 10
+    static let radiusLarge: CGFloat = 16
 
     /// The default corner for anything that doesn't say otherwise.
     static let radius: CGFloat = radiusMedium
@@ -100,9 +105,9 @@ enum Theme {
 
     // MARK: - Type
 
-    /// Display type — Fraunces. Used for the wordmark, screen headlines,
-    /// prompts, and entry recaps: everything that is *writing* rather than
-    /// *interface*. Above 28 pt it takes the 144 pt optical cut.
+    /// Display type — Source Serif 4. Used for the wordmark, screen
+    /// headlines, prompts, and entry recaps: everything that is *writing*
+    /// rather than *interface*. The optical size follows the point size.
     static func display(_ size: CGFloat, weight: DisplayWeight = .semibold, italic: Bool = false) -> Font {
         cachedFont(.display(size, weight, italic)) {
             guard let font = displayFont(size, weight: weight, italic: italic) else {
@@ -113,14 +118,12 @@ enum Theme {
         }
     }
 
-    /// Fraunces at the given size and weight, or `nil` if the face did not
-    /// load. `SOFT` and `WONK` stay at 0 for a crisp, regular cut.
+    /// Source Serif 4 at the given size and weight, or `nil` if the face
+    /// did not load.
     static func displayFont(_ size: CGFloat, weight: DisplayWeight = .semibold, italic: Bool = false) -> CTFont? {
-        Fonts.font(italic ? .frauncesItalic : .fraunces, size: size, axes: [
+        Fonts.font(italic ? .sourceSerifItalic : .sourceSerif, size: size, axes: [
             .weight: weight.rawValue,
-            .opticalSize: Fonts.frauncesOpticalSize(for: size),
-            .soft: 0,
-            .wonky: 0,
+            .opticalSize: Fonts.sourceSerifOpticalSize(for: size),
         ])
     }
 
@@ -140,8 +143,8 @@ enum Theme {
         }
     }
 
-    /// Interface type — Bricolage Grotesque. Labels, controls, body copy,
-    /// everything that isn't a headline.
+    /// Interface type — Work Sans. Labels, controls, body copy, everything
+    /// that isn't a headline.
     static func ui(_ size: CGFloat, _ weight: Font.Weight = .regular, italic: Bool = false) -> Font {
         cachedFont(.ui(size, weight, italic)) {
             guard let font = uiFont(size, weight, italic: italic) else {
@@ -152,26 +155,15 @@ enum Theme {
         }
     }
 
-    /// Bricolage at the given size and weight, or `nil` if the face did not
-    /// load. Bricolage has no italic, so italic interface text is Fraunces
-    /// Italic at the regular weight.
+    /// Work Sans at the given size and weight, or `nil` if the face did not
+    /// load. Italic interface text uses Work Sans Italic at the same weight.
     static func uiFont(_ size: CGFloat, _ weight: Font.Weight = .regular, italic: Bool = false) -> CTFont? {
-        if italic {
-            return Fonts.font(.frauncesItalic, size: size, axes: [
-                .weight: DisplayWeight.regular.rawValue,
-                .opticalSize: Fonts.frauncesOpticalSize(for: size),
-                .soft: 0,
-                .wonky: 0,
-            ])
-        }
-        return Fonts.font(.bricolage, size: size, axes: [
+        Fonts.font(italic ? .workSansItalic : .workSans, size: size, axes: [
             .weight: uiWeight(weight),
-            .opticalSize: Fonts.bricolageOpticalSize(for: size),
-            .width: 100,
         ])
     }
 
-    /// Bricolage `wght` for a SwiftUI weight: 400, 500, 600, or 700.
+    /// Work Sans `wght` for a SwiftUI weight: 400, 500, 600, or 700.
     static func uiWeight(_ weight: Font.Weight) -> CGFloat {
         switch weight {
         case .bold, .heavy, .black: 700
@@ -182,29 +174,9 @@ enum Theme {
     }
 
     /// Anything counted or compared — streaks, totals, word counts, error
-    /// detail. JetBrains Mono, so digits stay even.
+    /// detail. The system monospace, so digits stay even.
     static func mono(_ size: CGFloat, _ weight: Font.Weight = .semibold) -> Font {
-        cachedFont(.mono(size, weight)) {
-            guard let font = monoFont(size, weight) else {
-                return .system(size: size, weight: weight, design: .monospaced)
-            }
-            return Font(font)
-        }
-    }
-
-    /// JetBrains Mono at the given size and weight, or `nil` if the face
-    /// did not load.
-    static func monoFont(_ size: CGFloat, _ weight: Font.Weight = .semibold) -> CTFont? {
-        Fonts.font(.jetBrainsMono, size: size, axes: [.weight: monoWeight(weight)])
-    }
-
-    /// JetBrains Mono `wght` for a SwiftUI weight: 400, or 600 for
-    /// semibold and heavier.
-    static func monoWeight(_ weight: Font.Weight) -> CGFloat {
-        switch weight {
-        case .semibold, .bold, .heavy, .black: 600
-        default: 400
-        }
+        .system(size: size, weight: weight, design: .monospaced)
     }
 
     /// Accessors run in view bodies, so each size, weight, and style builds
@@ -212,7 +184,6 @@ enum Theme {
     private enum FontKey: Hashable {
         case display(CGFloat, DisplayWeight, Bool)
         case ui(CGFloat, Font.Weight, Bool)
-        case mono(CGFloat, Font.Weight)
     }
 
     private static var fontCache: [FontKey: Font] = [:]
@@ -294,38 +265,45 @@ private struct ElevationModifier: ViewModifier {
     /// Light-mode ink at `light` opacity, dark-mode black at `dark`. Never
     /// `Theme.ink`, which is light in dark mode.
     static func shadow(_ light: CGFloat, dark: CGFloat) -> Color {
-        Theme.adaptive(0x111318, 0x000000, lightAlpha: light, darkAlpha: dark)
+        Theme.adaptive(0x2B2419, 0x000000, lightAlpha: light, darkAlpha: dark)
     }
 }
 
-/// A quiet kicker label in sentence case, sitting above headlines,
-/// sections, and day groups.
+/// A quiet uppercase kicker label, sitting above headlines, sections, and
+/// day groups.
 struct SectionLabel: View {
     let text: String
     var tint: Color = Theme.inkTertiary
 
     var body: some View {
         Text(text)
-            .font(Theme.ui(12, .semibold))
+            .font(Theme.ui(11, .semibold))
+            .textCase(.uppercase)
+            .tracking(0.8)
             .foregroundStyle(tint)
     }
 }
 
-/// The 6 pt dot that marks a discipline. There are no per-discipline hues,
-/// so the dot is `accent` where the discipline is the point and quiet ink
-/// everywhere else.
-struct DisciplineDot: View {
-    var color: Color = Theme.accent
+/// The 22 pt two-letter tile that marks a discipline in the sidebar. Quiet
+/// on `surfaceSunken`, or a solid `primaryFill` tile on the selected row.
+struct DisciplineMonogram: View {
+    let exercise: Exercise
+    var selected: Bool = false
 
     var body: some View {
-        Circle()
-            .fill(color)
-            .frame(width: 6, height: 6)
+        Text(exercise.monogram)
+            .font(Theme.ui(9.5, .bold))
+            .foregroundStyle(selected ? Theme.primaryLabel : Theme.inkSecondary)
+            .frame(width: 22, height: 22)
+            .background(
+                selected ? Theme.primaryFill : Theme.surfaceSunken,
+                in: .rect(cornerRadius: Theme.radiusSmall)
+            )
             .accessibilityHidden(true)
     }
 }
 
-/// A discipline label: an accent dot and the name in ink. Deliberately not
+/// A discipline label: the name in semibold accent text. Deliberately not
 /// a chip — an outline around every row's tag turned the list into a grid
 /// of boxes.
 struct Tag: View {
@@ -333,12 +311,9 @@ struct Tag: View {
     var size: CGFloat = 12
 
     var body: some View {
-        HStack(spacing: 6) {
-            DisciplineDot()
-            Text(text)
-                .font(Theme.ui(size, .semibold))
-                .foregroundStyle(Theme.ink)
-        }
+        Text(text)
+            .font(Theme.ui(size, .semibold))
+            .foregroundStyle(Theme.accentText)
     }
 }
 
@@ -359,8 +334,8 @@ struct Badge: View {
     }
 }
 
-/// The highlighter: prompt text with its dealt fragment set on a `mark`
-/// fill in `onMark` ink. The rest of the text keeps the style of the `Text`
+/// The prompt highlight: prompt text with its dealt fragment set on the
+/// `mark` selection fill in `onMark` ink. The rest of the text keeps the style of the `Text`
 /// that shows it.
 enum Highlight {
     static func attributed(_ text: String, marking phrase: String?) -> AttributedString {
@@ -413,7 +388,7 @@ extension View {
     }
 }
 
-/// The system's primary action: a `primaryFill` capsule with a
+/// The system's primary action: a solid `primaryFill` rounded rect with a
 /// `primaryLabel` title. `shortcutHint` names the key that also runs the
 /// action, in mono at reduced opacity after the title.
 struct PrimaryActionButtonLabel: View {
@@ -438,12 +413,16 @@ struct PrimaryActionButtonLabel: View {
         .frame(maxWidth: fullWidth ? .infinity : nil)
         .padding(.horizontal, fullWidth ? 0 : 22)
         .padding(.vertical, 12)
-        .background(enabled ? Theme.primaryFill : Theme.surfaceSunken, in: .capsule)
-        .overlay(
-            Capsule().strokeBorder(enabled ? .clear : Theme.divider, lineWidth: 1)
+        .background(
+            enabled ? Theme.primaryFill : Theme.surfaceSunken,
+            in: .rect(cornerRadius: Theme.radiusMedium)
         )
-        .contentShape(.capsule)
-        .hoverHighlight(in: Capsule())
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.radiusMedium)
+                .strokeBorder(enabled ? .clear : Theme.divider, lineWidth: 1)
+        )
+        .contentShape(.rect(cornerRadius: Theme.radiusMedium))
+        .hoverHighlight(cornerRadius: Theme.radiusMedium)
     }
 }
 
@@ -482,7 +461,8 @@ struct EmptyStateView<Actions: View>: View {
     }
 }
 
-/// The system's secondary action: a surface capsule, hairline, ink text.
+/// The system's secondary action: a surface rounded rect, hairline, ink
+/// text.
 /// `small` is the header-sized step, 30 pt high.
 struct SecondaryActionButtonLabel: View {
     let title: String
@@ -503,18 +483,19 @@ struct SecondaryActionButtonLabel: View {
         .frame(height: small ? 30 : nil)
         .padding(.horizontal, fullWidth ? 0 : small ? 12 : 16)
         .padding(.vertical, small ? 0 : 10)
-        .background(Theme.surface, in: .capsule)
+        .background(Theme.surface, in: .rect(cornerRadius: Theme.radiusMedium))
         .overlay(
-            Capsule().strokeBorder(Theme.divider, lineWidth: 1)
+            RoundedRectangle(cornerRadius: Theme.radiusMedium)
+                .strokeBorder(Theme.divider, lineWidth: 1)
         )
-        .contentShape(.capsule)
-        .hoverHighlight(in: Capsule())
+        .contentShape(.rect(cornerRadius: Theme.radiusMedium))
+        .hoverHighlight(cornerRadius: Theme.radiusMedium)
     }
 }
 
-/// A 30 pt round icon control: `surface` with a hairline, or an `accentSoft`
-/// wash with an `accent` icon while the control is active, such as a filter
-/// that is on.
+/// A 30 pt square icon control with small corners: `surface` with a
+/// hairline, or an `accentSoft` wash with an `accent` icon while the
+/// control is active, such as a filter that is on.
 struct IconCapsuleLabel: View {
     let systemImage: String
     var active: Bool = false
@@ -524,11 +505,15 @@ struct IconCapsuleLabel: View {
             .font(.system(size: 12.5, weight: .medium))
             .foregroundStyle(active ? Theme.accent : Theme.inkSecondary)
             .frame(width: 30, height: 30)
-            .background(active ? Theme.accentSoft : Theme.surface, in: .circle)
-            .overlay(
-                Circle().strokeBorder(active ? .clear : Theme.divider, lineWidth: 1)
+            .background(
+                active ? Theme.accentSoft : Theme.surface,
+                in: .rect(cornerRadius: Theme.radiusSmall)
             )
-            .contentShape(.circle)
-            .hoverHighlight(in: Circle())
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.radiusSmall)
+                    .strokeBorder(active ? .clear : Theme.divider, lineWidth: 1)
+            )
+            .contentShape(.rect(cornerRadius: Theme.radiusSmall))
+            .hoverHighlight()
     }
 }

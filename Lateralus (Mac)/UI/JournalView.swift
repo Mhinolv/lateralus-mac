@@ -180,7 +180,7 @@ struct JournalView: View {
             }
             .padding(.horizontal, 12)
             .frame(height: 30)
-            .background(Theme.surfaceSunken, in: .capsule)
+            .background(Theme.surfaceSunken, in: .rect(cornerRadius: Theme.radiusMedium))
 
             filterMenu
             dateFilterButton
@@ -372,7 +372,7 @@ struct JournalView: View {
             }
             .buttonStyle(.plain)
             .font(Theme.ui(13, .medium))
-            .foregroundStyle(Theme.accent)
+            .foregroundStyle(Theme.accentText)
             .disabled(!dateRange.isActive)
             .opacity(dateRange.isActive ? 1 : 0.5)
         }

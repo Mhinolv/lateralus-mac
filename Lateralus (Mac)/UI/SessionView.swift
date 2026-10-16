@@ -268,7 +268,7 @@ struct SessionView: View {
                 HStack(alignment: .firstTextBaseline, spacing: 10) {
                     Text("\(index + 1)")
                         .font(Theme.display(13, weight: .regular, italic: true))
-                        .foregroundStyle(Theme.accent)
+                        .foregroundStyle(Theme.accentText)
                     Text(item)
                         .font(Theme.ui(13.5))
                         .lineSpacing(3)
@@ -350,7 +350,7 @@ struct SessionView: View {
                     .textFieldStyle(.plain)
                     .focused($editorFocused)
                     .font(Theme.ui(15, .semibold))
-                    .foregroundStyle(Theme.accent)
+                    .foregroundStyle(Theme.accentText)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 12)
                     .inputWell()
@@ -396,7 +396,7 @@ struct SessionView: View {
                     .background(Theme.accentSoft, in: .circle)
                 Text("Saved to your journal")
                     .font(Theme.ui(14, .semibold))
-                    .foregroundStyle(Theme.accent)
+                    .foregroundStyle(Theme.accentText)
             }
             if let saved = savedEntry, !saved.responseText.isEmpty {
                 Text(saved.responseText)
@@ -569,7 +569,7 @@ private struct ResponseModeRail: View {
                         .font(Theme.ui(14, .semibold))
                     Text(status)
                         .font(Theme.mono(11))
-                        .foregroundStyle(selected ? Theme.accent : Theme.inkTertiary)
+                        .foregroundStyle(selected ? Theme.accentText : Theme.inkTertiary)
                 }
             }
             .foregroundStyle(selected ? Theme.ink : Theme.inkSecondary)
@@ -594,7 +594,7 @@ private struct ResponseModeRail: View {
     }
 }
 
-/// The Voice pane: the record capsule, then the player and the trash for a
+/// The Voice pane: the record button, then the player and the trash for a
 /// finished recording. Recording stops itself at five minutes.
 private struct VoiceResponsePane: View {
     let recorder: VoiceNoteRecorder

@@ -229,10 +229,30 @@ enum Exercise: String, CaseIterable, Codable, Identifiable, Hashable {
     /// of relying on a per-item hue.
     var tint: Color { Self.accentTint }
 
-    /// `#4A6300` in light mode, `#D4F25A` in dark mode.
+    /// `#B5502E` in light mode, `#E07A52` in dark mode.
     private static let accentTint = Color(nsColor: NSColor(name: nil) { appearance in
         appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
-            ? NSColor(srgbRed: 212 / 255, green: 242 / 255, blue: 90 / 255, alpha: 1)
-            : NSColor(srgbRed: 74 / 255, green: 99 / 255, blue: 0, alpha: 1)
+            ? NSColor(srgbRed: 224 / 255, green: 122 / 255, blue: 82 / 255, alpha: 1)
+            : NSColor(srgbRed: 181 / 255, green: 80 / 255, blue: 46 / 255, alpha: 1)
     })
+
+    /// The two-letter code on the discipline's sidebar tile.
+    var monogram: String {
+        switch self {
+        case .alternateUses: "AU"
+        case .twistedUses: "TU"
+        case .realityShift: "RS"
+        case .fusion: "FU"
+        case .backstory: "BS"
+        case .perspectiveFlip: "PF"
+        case .redefine: "RD"
+        case .coinAWord: "CW"
+        case .commonThread: "CT"
+        case .positiveSpin: "PS"
+        case .inventions: "IN"
+        case .miniMythology: "MM"
+        case .diary: "DI"
+        case .unknown: "??"
+        }
+    }
 }

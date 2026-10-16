@@ -11,12 +11,10 @@ struct Sketch: Codable, Equatable {
         var blue: Double
         var width: Double
 
-        /// The on-screen color. A stroke of one of the pens follows the pen
-        /// into dark mode, so it stays readable on dark paper. Other colors
-        /// draw as saved. The saved components never change.
+        /// The on-screen color: the saved components in both appearances,
+        /// because `Theme.sketchPaper` stays light in dark mode.
         var color: Color {
-            SketchPen(red: red, green: green, blue: blue)?.color
-                ?? Color(red: red, green: green, blue: blue)
+            Color(nsColor: NSColor(srgbRed: red, green: green, blue: blue, alpha: 1))
         }
     }
 
@@ -41,8 +39,8 @@ struct Sketch: Codable, Equatable {
 }
 
 /// The pens available in the canvas. The saved `components` are chosen to
-/// read well on light paper. On dark-mode paper each pen draws in a lifted
-/// color, `darkHex`. Strokes and PNG exports keep the light components.
+/// read well on light paper. The paper is light in both appearances, so
+/// every pen draws its saved components on screen and in PNG exports.
 enum SketchPen: CaseIterable, Identifiable {
     case ink, crimson, cobalt, forest, marigold, plum
 
@@ -56,32 +54,10 @@ enum SketchPen: CaseIterable, Identifiable {
         self = pen
     }
 
-    /// The saved components in light mode, `darkHex` in dark mode.
+    /// The saved components, in both appearances.
     var color: Color {
         let rgb = components
-        let dark = darkHex
-        return Color(nsColor: NSColor(name: nil) { appearance in
-            Theme.isDark(appearance)
-                ? NSColor(
-                    srgbRed: CGFloat((dark >> 16) & 0xFF) / 255,
-                    green: CGFloat((dark >> 8) & 0xFF) / 255,
-                    blue: CGFloat(dark & 0xFF) / 255,
-                    alpha: 1
-                )
-                : NSColor(srgbRed: rgb.red, green: rgb.green, blue: rgb.blue, alpha: 1)
-        })
-    }
-
-    /// The sRGB color the pen draws in on dark-mode paper.
-    var darkHex: UInt32 {
-        switch self {
-        case .ink: 0xF2EFE7
-        case .crimson: 0xE5484D
-        case .cobalt: 0x4C7BF0
-        case .forest: 0x3BAF6A
-        case .marigold: 0xF2B33D
-        case .plum: 0xA86ADB
-        }
+        return Color(nsColor: NSColor(srgbRed: rgb.red, green: rgb.green, blue: rgb.blue, alpha: 1))
     }
 
     var components: (red: Double, green: Double, blue: Double) {
@@ -104,7 +80,7 @@ struct SketchCanvas: View {
     @Binding var history: SketchHistory
     let tint: Color
     /// If true, the canvas fills its container and the tools float over its
-    /// top-left corner in a capsule. If false, the tools sit above it.
+    /// top-left corner in a rounded bar. If false, the tools sit above it.
     var floatingTools = false
 
     @State private var pen: SketchPen = .ink
@@ -131,8 +107,11 @@ struct SketchCanvas: View {
                         .labelStyle(.iconOnly)
                         .padding(.horizontal, 14)
                         .padding(.vertical, 8)
-                        .background(Theme.surface, in: .capsule)
-                        .overlay(Capsule().strokeBorder(Theme.divider, lineWidth: 1))
+                        .background(Theme.surface, in: .rect(cornerRadius: Theme.radiusMedium))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: Theme.radiusMedium)
+                                .strokeBorder(Theme.divider, lineWidth: 1)
+                        )
                         .padding(12)
                 }
         } else {

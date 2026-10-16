@@ -1,7 +1,7 @@
 import XCTest
 @testable import Lateralus__Mac_
 
-/// The text and step rules behind the Night Shift Journal and Insights
+/// The text and step rules behind the Journal and Insights
 /// screens (#26).
 @MainActor
 final class JournalInsightsStyleTests: XCTestCase {

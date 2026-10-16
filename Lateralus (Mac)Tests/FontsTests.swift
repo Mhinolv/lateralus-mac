@@ -3,7 +3,7 @@ import SwiftUI
 import XCTest
 @testable import Lateralus__Mac_
 
-/// The Night Shift type stack: each Theme accessor resolves to its bundled
+/// The Lamplight type stack: each Theme accessor resolves to its bundled
 /// variable face with the axes from the design notes.
 final class FontsTests: XCTestCase {
 
@@ -13,7 +13,7 @@ final class FontsTests: XCTestCase {
     private func axes(_ font: CTFont) -> [String: Double] {
         let variation = CTFontCopyVariation(font) as? [NSNumber: NSNumber] ?? [:]
         let table = CTFontCopyVariationAxes(font) as? [[String: Any]] ?? []
-        let tags: [Fonts.Axis] = [.weight, .opticalSize, .width, .soft, .wonky]
+        let tags: [Fonts.Axis] = [.weight, .opticalSize]
         var result: [String: Double] = [:]
         for axis in tags {
             let id = NSNumber(value: axis.identifier)
@@ -41,96 +41,85 @@ final class FontsTests: XCTestCase {
     }
 
     func testLicensesShipBesideTheFaces() throws {
-        for name in ["OFL-Fraunces", "OFL-BricolageGrotesque", "OFL-JetBrainsMono"] {
+        for name in ["OFL-SourceSerif4", "OFL-WorkSans"] {
             let url = try XCTUnwrap(Bundle.main.url(forResource: name, withExtension: "txt"), name)
             let text = try String(contentsOf: url, encoding: .utf8)
             XCTAssertTrue(text.contains("SIL Open Font License"), name)
         }
     }
 
-    func testOldFacesAreGone() {
-        for name in ["SourceSerif4-Regular", "WorkSans-Regular"] {
-            XCTAssertNil(Bundle.main.url(forResource: name, withExtension: "otf"), name)
+    /// Owner decision: Fraunces, Bricolage Grotesque, JetBrains Mono, and
+    /// their licenses no longer ship.
+    func testNightShiftFacesAreGone() {
+        let faces = [
+            "Fraunces[SOFT,WONK,opsz,wght]", "Fraunces-Italic[SOFT,WONK,opsz,wght]",
+            "BricolageGrotesque[opsz,wdth,wght]", "JetBrainsMono[wght]",
+        ]
+        for name in faces {
             XCTAssertNil(Bundle.main.url(forResource: name, withExtension: "ttf"), name)
+        }
+        for name in ["OFL-Fraunces", "OFL-BricolageGrotesque", "OFL-JetBrainsMono"] {
+            XCTAssertNil(Bundle.main.url(forResource: name, withExtension: "txt"), name)
         }
     }
 
-    func testFrauncesOpticalSizeSwitchesAbove28() {
-        XCTAssertEqual(Fonts.frauncesOpticalSize(for: 6), 9)
-        XCTAssertEqual(Fonts.frauncesOpticalSize(for: 9), 9)
-        XCTAssertEqual(Fonts.frauncesOpticalSize(for: 22), 22)
-        XCTAssertEqual(Fonts.frauncesOpticalSize(for: 28), 28)
-        XCTAssertEqual(Fonts.frauncesOpticalSize(for: 28.5), 144)
-        XCTAssertEqual(Fonts.frauncesOpticalSize(for: 36), 144)
-        XCTAssertEqual(Fonts.frauncesOpticalSize(for: 200), 144)
+    func testSourceSerifOpticalSizeClampsTo8Through60() {
+        XCTAssertEqual(Fonts.sourceSerifOpticalSize(for: 6), 8)
+        XCTAssertEqual(Fonts.sourceSerifOpticalSize(for: 8), 8)
+        XCTAssertEqual(Fonts.sourceSerifOpticalSize(for: 13.5), 13.5)
+        XCTAssertEqual(Fonts.sourceSerifOpticalSize(for: 22), 22)
+        XCTAssertEqual(Fonts.sourceSerifOpticalSize(for: 60), 60)
+        XCTAssertEqual(Fonts.sourceSerifOpticalSize(for: 200), 60)
     }
 
-    func testBricolageOpticalSizeClampsTo12Through96() {
-        XCTAssertEqual(Fonts.bricolageOpticalSize(for: 10), 12)
-        XCTAssertEqual(Fonts.bricolageOpticalSize(for: 12), 12)
-        XCTAssertEqual(Fonts.bricolageOpticalSize(for: 13.5), 13.5)
-        XCTAssertEqual(Fonts.bricolageOpticalSize(for: 96), 96)
-        XCTAssertEqual(Fonts.bricolageOpticalSize(for: 120), 96)
-    }
-
-    func testDisplayIsFrauncesWithPinnedAxes() throws {
+    func testDisplayIsSourceSerifWithPinnedAxes() throws {
         let cases: [(CGFloat, Theme.DisplayWeight, Bool, Double, Double)] = [
             (22, .semibold, true, 600, 22),   // wordmark
-            (36, .semibold, false, 600, 144),
-            (32, .light, false, 300, 144),
-            (28, .regular, false, 400, 28),
-            (19, .regular, true, 400, 19),
+            (36, .semibold, false, 600, 36),
+            (32, .light, false, 300, 32),
+            (72, .light, false, 300, 60),
+            (13, .regular, true, 400, 13),
+            (7, .regular, false, 400, 8),
         ]
         for (size, weight, italic, wght, opsz) in cases {
             let font = try XCTUnwrap(Theme.displayFont(size, weight: weight, italic: italic))
             let label = "display(\(size), \(weight), italic: \(italic))"
-            XCTAssertEqual(family(font), "Fraunces", label)
+            XCTAssertEqual(family(font), "Source Serif 4", label)
             XCTAssertEqual(isItalic(font), italic, label)
             XCTAssertEqual(CTFontGetSize(font), size, label)
             let applied = axes(font)
             XCTAssertEqual(applied["wght"], wght, label)
             XCTAssertEqual(applied["opsz"], opsz, label)
-            XCTAssertEqual(applied["SOFT"], 0, label)
-            XCTAssertEqual(applied["WONK"], 0, label)
         }
     }
 
-    func testUIIsBricolageAtEveryWeight() throws {
+    func testUIIsWorkSansAtEveryWeight() throws {
         let cases: [(Font.Weight, Double)] = [
             (.ultraLight, 400), (.light, 400), (.regular, 400), (.medium, 500),
             (.semibold, 600), (.bold, 700), (.heavy, 700), (.black, 700),
         ]
         for (weight, wght) in cases {
-            let font = try XCTUnwrap(Theme.uiFont(13.5, weight))
-            XCTAssertEqual(family(font), "Bricolage Grotesque", "\(weight)")
-            let applied = axes(font)
-            XCTAssertEqual(applied["wght"], wght, "\(weight)")
-            XCTAssertEqual(applied["opsz"], 13.5, "\(weight)")
-            XCTAssertEqual(applied["wdth"], 100, "\(weight)")
+            for italic in [false, true] {
+                let font = try XCTUnwrap(Theme.uiFont(13.5, weight, italic: italic))
+                let label = "\(weight), italic: \(italic)"
+                XCTAssertEqual(family(font), "Work Sans", label)
+                XCTAssertEqual(isItalic(font), italic, label)
+                XCTAssertEqual(CTFontGetSize(font), 13.5, label)
+                XCTAssertEqual(axes(font)["wght"], wght, label)
+            }
         }
-        XCTAssertEqual(axes(try XCTUnwrap(Theme.uiFont(10)))["opsz"], 12)
     }
 
-    func testUIItalicUsesFrauncesItalicRegular() throws {
-        let font = try XCTUnwrap(Theme.uiFont(13, .semibold, italic: true))
-        XCTAssertEqual(family(font), "Fraunces")
-        XCTAssertTrue(isItalic(font))
-        XCTAssertEqual(CTFontGetSize(font), 13)
-        XCTAssertEqual(axes(font)["wght"], 400)
-        XCTAssertEqual(axes(font)["opsz"], 13)
-    }
-
-    func testMonoIsJetBrainsMonoAt400Or600() throws {
-        let cases: [(Font.Weight, Double)] = [
-            (.light, 400), (.regular, 400), (.medium, 400),
-            (.semibold, 600), (.bold, 600), (.black, 600),
-        ]
-        for (weight, wght) in cases {
-            let font = try XCTUnwrap(Theme.monoFont(26, weight))
-            XCTAssertEqual(family(font), "JetBrains Mono", "\(weight)")
-            XCTAssertEqual(axes(font)["wght"], wght, "\(weight)")
+    /// Counts use the system monospace. No bundled mono face ships.
+    @MainActor
+    func testMonoIsSystemMonospace() throws {
+        XCTAssertEqual(Theme.mono(12), Font.system(size: 12, weight: .semibold, design: .monospaced))
+        XCTAssertEqual(Theme.mono(26, .regular), Font.system(size: 26, weight: .regular, design: .monospaced))
+        func width(_ text: String) throws -> CGFloat {
+            let renderer = ImageRenderer(content: Text(text).font(Theme.mono(14)).fixedSize())
+            return try XCTUnwrap(renderer.nsImage).size.width
         }
-        XCTAssertTrue(CTFontGetSymbolicTraits(try XCTUnwrap(Theme.monoFont(12))).contains(.traitMonoSpace))
+        XCTAssertEqual(try width("1111"), try width("8888"), accuracy: 0.5, "Digits stay even")
     }
 
     /// The axes change the outlines, not only the reported values: a
@@ -158,6 +147,5 @@ final class FontsTests: XCTestCase {
         }
         XCTAssertGreaterThan(try width(Theme.display(32)), try width(Theme.display(32, weight: .light)))
         XCTAssertGreaterThan(try width(Theme.ui(14, .bold)), try width(Theme.ui(14)))
-        XCTAssertGreaterThan(try width(Theme.mono(14, .semibold)), 0)
     }
 }
